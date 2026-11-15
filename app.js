@@ -419,8 +419,8 @@ function renderAcct(){
  if(!u){el.innerHTML='<button class="solid" onclick="openLogin()">Нэвтрэх</button>';return}
  const pro=Auth.isPremium(), until=Auth.premiumUntil();
  el.innerHTML=`<span class="who">${esc(u.email||'')}</span>
-  ${pro?`<span class="badge pro" title="${until?until.toLocaleDateString():''} хүртэл">★ Премиум</span>`:'<span class="badge">Үнэгүй</span>'}
-  ${pro?'<button onclick="openTrips()">Миний аяллууд</button>':'<button class="solid" onclick="openPremium()">Премиум</button>'}
+  ${pro?`<span class="badge pro" title="${until?until.toLocaleDateString():''} хүртэл">★ Премиум</span>`:Auth.pending?'<button onclick="openPremium()">⏳ Шалгагдаж байна</button>':'<span class="badge">Үнэгүй</span>'}
+  ${pro?'<button onclick="openTrips()">Миний аяллууд</button>':Auth.pending?'':'<button class="solid" onclick="openPremium()">Премиум</button>'}
   <button onclick="Auth.signOut()">Гарах</button>`;
 }
 
@@ -442,16 +442,80 @@ async function emailLogin(e){
  $('#modalBody').innerHTML=error?`<h3>Алдаа гарлаа</h3><p>${esc(error.message)}</p>`:`<h3>📩 Имэйлээ шалгаарай</h3><p><b>${esc(email)}</b> хаяг руу нэвтрэх холбоос илгээлээ. Spam хавтсаа ч шалгаарай.</p>`;
 }
 
+function copyText(txt,btn){
+ const done=()=>{if(btn){const o=btn.textContent;btn.textContent='✅';setTimeout(()=>btn.textContent=o,1200)}};
+ try{navigator.clipboard.writeText(txt).then(done,()=>toast('Хуулж чадсангүй — гараар хуулна уу'))}catch(e){toast('Хуулж чадсангүй — гараар хуулна уу')}
+}
+function payRow(label,val){
+ if(!val) return '';
+ return `<div class="pay-row"><span>${label}</span><b>${esc(val)}</b><button type="button" class="copy" data-v="${esc(val)}" onclick="copyText(this.dataset.v,this)">Хуулах</button></div>`;
+}
 function openPremium(){
  if(!Auth.configured){openModal('<h3>Премиум</h3><p>Демо горимд байна. Премиумыг туршиж харах бол <code>config.js</code>-д <code>DEMO_PREMIUM: true</code> болгоно уу.</p>');return}
  if(!Auth.user){openLogin();return}
- if(Auth.isPremium()){toast('Та премиум эрхтэй байна');return}
- const cfg=window.APP_CONFIG||{};
+ const cfg=window.APP_CONFIG||{}, price=cfg.PREMIUM_PRICE||9900, days=cfg.PREMIUM_DAYS||30;
+ if(Auth.isPremium()&&!Auth.pending){
+  const u=Auth.premiumUntil();
+  openModal(`<h3>★ Та премиум эрхтэй</h3><p>${u?`<b>${u.toLocaleDateString()}</b> хүртэл хүчинтэй.`:''}</p><p class="note">Хугацаагаа сунгах бол дахин төлбөр төлж хүсэлт илгээж болно.</p>
+   <button class="btn wide" onclick="openPayForm()">Хугацаа сунгах</button>`);
+  return;
+ }
+ if(Auth.pending){
+  const p=Auth.pending;
+  openModal(`<h3>⏳ Таны төлбөр шалгагдаж байна</h3>
+   <p>Гүйлгээний утга: <b>${esc(p.ref_code)}</b> · ${fmt(p.amount)}₮<br><small class="note">${new Date(p.created_at).toLocaleString()}</small></p>
+   <p class="note">Бид дансны хуулгатай тулгаад премиум эрхийг тань нээнэ. Ихэвчлэн хэдэн цагийн дотор.${cfg.CONTACT?` Асуух зүйл байвал: <b>${esc(cfg.CONTACT)}</b>`:''}</p>
+   <button class="btn ghost wide" onclick="checkStatus()">Төлөвөө шалгах</button>`);
+  return;
+ }
+ openPayForm();
+}
+function openPayForm(){
+ const cfg=window.APP_CONFIG||{}, price=cfg.PREMIUM_PRICE||9900, days=cfg.PREMIUM_DAYS||30, ref=Auth.refCode();
+ const hasBank=cfg.BANK_ACCOUNT||cfg.BANK_QR_IMAGE;
  openModal(`<h3>★ Премиум эрх</h3>
-  <div class="price">${fmt(cfg.PREMIUM_PRICE||9900)}₮ <small>/ ${cfg.PREMIUM_DAYS||30} хоног</small></div>
-  <ul class="info-list" style="margin:12px 0"><li>Өдөр бүрийн бүтэн хөтөлбөр</li><li>Аяллаа хадгалах, дахин нээх</li><li>Хөтөлбөр хуулж хуваалцах</li></ul>
-  <div class="warn" style="margin-top:0">QPay төлбөр удахгүй нээгдэнэ. Одоогоор эрх авах бол бидэнтэй холбогдоно уу.</div>
-  <button class="btn ghost wide" style="margin-top:12px" onclick="Auth.refresh().then(()=>{closeModal();render()})">Төлбөр төлсөн бол — эрхээ шалгах</button>`);
+  <div class="price">${fmt(price)}₮ <small>/ ${days} хоног</small></div>
+  <ul class="info-list" style="margin:10px 0 14px"><li>Өдөр бүрийн бүтэн хөтөлбөр</li><li>Аяллаа хадгалах, дахин нээх</li><li>Хөтөлбөр хуулж хуваалцах</li></ul>
+  ${hasBank?`
+  <div class="pay-box">
+   <div class="pay-step">1. Дараах данс руу <b>${fmt(price)}₮</b> шилжүүлнэ</div>
+   ${cfg.BANK_QR_IMAGE?`<div class="qr"><img src="${esc(cfg.BANK_QR_IMAGE)}" alt="Төлбөрийн QR"><small>Банкны аппаараа уншуулна</small></div>`:''}
+   ${payRow('Банк',cfg.BANK_NAME)}${payRow('Данс',cfg.BANK_ACCOUNT)}${payRow('Хүлээн авагч',cfg.BANK_HOLDER)}
+   <div class="pay-row ref"><span>Гүйлгээний утга</span><b>${ref}</b><button type="button" class="copy" onclick="copyText('${ref}',this)">Хуулах</button></div>
+   <p class="note" style="margin:6px 0 0">⚠️ Гүйлгээний утгад заавал <b>${ref}</b> гэж бичнэ үү. Үүгээр таны төлбөрийг танина.</p>
+  </div>
+  <form onsubmit="submitPay(event)" class="pay-box">
+   <div class="pay-step">2. Шилжүүлсний дараа мэдэгдэнэ</div>
+   <input class="field" id="payName" maxlength="100" placeholder="Шилжүүлсэн дансны эзэмшигчийн нэр" required>
+   <input class="field" id="payNote" maxlength="300" placeholder="Нэмэлт тайлбар (заавал биш)">
+   <button class="btn wide" type="submit" id="payBtn">Төлсөн — шалгуулах</button>
+  </form>`:`<div class="warn">Төлбөрийн данс хараахан тохируулагдаагүй байна.${cfg.CONTACT?` Холбогдох: <b>${esc(cfg.CONTACT)}</b>`:''}</div>`}
+  ${cfg.CONTACT&&hasBank?`<p class="note">Асуух зүйл байвал: <b>${esc(cfg.CONTACT)}</b></p>`:''}`);
+}
+async function submitPay(e){
+ e.preventDefault();
+ const cfg=window.APP_CONFIG||{}, btn=$('#payBtn');
+ const name=$('#payName').value.trim(), note=$('#payNote').value.trim();
+ if(!name) return;
+ btn.disabled=true; btn.textContent='Илгээж байна…';
+ const {error}=await Auth.createRequest(name,note,cfg.PREMIUM_PRICE||9900);
+ if(error){
+  btn.disabled=false; btn.textContent='Төлсөн — шалгуулах';
+  toast(/duplicate|unique/i.test(error.message)?'Танд шалгагдаж буй хүсэлт аль хэдийн байна':'Алдаа: '+error.message);
+  return;
+ }
+ await Auth.refresh();
+ openPremium();
+}
+async function checkStatus(){
+ await Auth.refresh();
+ if(Auth.isPremium()&&!Auth.pending){closeModal();toast('🎉 Премиум эрх нээгдлээ!');render();return}
+ if(!Auth.pending){
+  const {data}=await Auth.myRequests();
+  const last=data&&data[0];
+  if(last&&last.status==='rejected'){openModal(`<h3>Хүсэлт батлагдсангүй</h3><p>${esc(last.admin_note||'Төлбөр олдсонгүй.')}</p><button class="btn wide" onclick="openPayForm()">Дахин илгээх</button>`);return}
+ }
+ toast('Одоогоор шалгагдаж байна');
 }
 
 function tripPayload(){return{sel,car:$('#car').value,price:$('#price').value,perday:$('#perday').value,sdays:$('#sdays').value,start:$('#start').value,ret:$('#ret').checked}}

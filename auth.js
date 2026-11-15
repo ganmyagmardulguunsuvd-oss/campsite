@@ -4,16 +4,19 @@
   const configured = !!(cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY && window.supabase);
   const sb = configured ? window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY) : null;
 
-  const state = { user: null, profile: null, ready: !configured };
+  const state = { user: null, profile: null, pending: null, ready: !configured };
   const listeners = [];
   const emit = () => listeners.forEach(f => { try { f(state) } catch (e) { console.error(e) } });
 
   async function loadProfile() {
-    if (!sb || !state.user) { state.profile = null; return }
+    if (!sb || !state.user) { state.profile = null; state.pending = null; return }
     const { data, error } = await sb.from('profiles')
       .select('id,email,premium_until').eq('id', state.user.id).maybeSingle();
     if (error) console.warn('profile:', error.message);
     state.profile = data || null;
+    const r = await sb.from('payment_requests').select('id,ref_code,amount,status,created_at')
+      .eq('user_id', state.user.id).eq('status', 'pending').maybeSingle();
+    state.pending = (r && r.data) || null;
   }
 
   const redirect = () => location.origin + location.pathname;
@@ -48,7 +51,35 @@
     listTrips() {
       return sb.from('trips').select('id,name,payload,created_at').order('created_at', { ascending: false });
     },
-    deleteTrip(id) { return sb.from('trips').delete().eq('id', id) }
+    deleteTrip(id) { return sb.from('trips').delete().eq('id', id) },
+
+    // Төлбөр — хэрэглэгч
+    get pending() { return state.pending },
+    refCode() { return state.user ? 'CS-' + state.user.id.replace(/-/g, '').slice(0, 6).toUpperCase() : '' },
+    createRequest(payer_name, note, amount) {
+      return sb.from('payment_requests').insert({ payer_name, note: note || null, amount })
+        .select('id,ref_code,amount,status,created_at').single();
+    },
+    myRequests() {
+      return sb.from('payment_requests').select('*').eq('user_id', state.user.id)
+        .order('created_at', { ascending: false }).limit(10);
+    },
+
+    // Админ
+    async isAdmin() { if (!sb || !state.user) return false; const { data } = await sb.rpc('is_admin'); return !!data },
+    listRequests(status) {
+      let q = sb.from('payment_requests').select('*').order('created_at', { ascending: false }).limit(300);
+      if (status) q = q.eq('status', status);
+      return q;
+    },
+    listPremium() {
+      return sb.from('profiles').select('email,premium_until,created_at')
+        .gt('premium_until', new Date().toISOString()).order('premium_until', { ascending: true }).limit(300);
+    },
+    approve(id, days) { return sb.rpc('approve_payment', { req_id: id, p_days: days }) },
+    reject(id, reason) { return sb.rpc('reject_payment', { req_id: id, reason }) },
+    grantByEmail(email, days) { return sb.rpc('grant_premium_by_email', { p_email: email, p_days: days }) },
+    stats() { return sb.rpc('admin_stats') }
   };
 
   if (sb) {

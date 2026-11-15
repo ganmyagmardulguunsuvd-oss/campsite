@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Админ — Монгол аялал</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+header{padding:20px 0 18px}
+header h1{font-size:24px}
+.adm-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media(max-width:700px){.adm-stats{grid-template-columns:repeat(2,1fr)}}
+.rq{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.rq:last-child{border-bottom:none}
+.rq .who{font-weight:600}
+.rq .meta{font-size:13px;color:var(--muted)}
+.rq .ref{font-weight:700;color:var(--sun);letter-spacing:.4px}
+.rq .act{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.rq input{width:64px;font:14px Rubik,sans-serif;padding:6px;border:1.5px solid var(--line);border-radius:8px}
+.btn.sm{padding:7px 12px;font-size:13.5px;border-radius:9px}
+.btn.ok{background:var(--steppe)}
+.btn.no{background:#fff;color:var(--red);border:1.5px solid #f1c4bf}
+.st{font-size:12px;border-radius:6px;padding:2px 7px;font-weight:600}
+.st.pending{background:var(--sun2);color:#9a4a0b}.st.approved{background:var(--steppe2);color:var(--steppe)}.st.rejected{background:var(--red2);color:var(--red)}
+.grant{display:flex;gap:8px;flex-wrap:wrap}
+.grant input{flex:1;min-width:200px}
+.grant input[type=number]{flex:none;width:90px;min-width:0}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <div class="acct" id="acct"></div>
+  <h1>🛠️ Админ</h1>
+  <p><a href="./" style="color:#fff">← Сайт руу буцах</a></p>
+</div></header>
+
+<main class="wrap" id="main"><div class="empty">Ачаалж байна…</div></main>
+
+<div class="modal" id="modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal-box"><button class="modal-x" onclick="closeModal()" aria-label="Хаах">×</button><div id="modalBody"></div></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="auth.js"></script>
+<script>
+const $=s=>document.querySelector(s);
+const cfg=window.APP_CONFIG||{};
+const fmt=n=>Math.round(n||0).toLocaleString('en-US').replace(/,/g,' ');
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const dt=s=>s?new Date(s).toLocaleString():'';
+function openModal(h){$('#modalBody').innerHTML=h;$('#modal').classList.add('open')}
+function closeModal(){$('#modal').classList.remove('open')}
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('show'),2800)}
+
+let tab='pending', admin=null;
+
+function openLogin(){
+ openModal(`<h3>Админ нэвтрэх</h3>
+  <form onsubmit="emailLogin(event)"><input class="field" type="email" id="loginEmail" placeholder="таны@имэйл" required>
+  <button class="btn wide" type="submit">Нэвтрэх холбоос илгээх</button></form>`);
+}
+async function emailLogin(e){
+ e.preventDefault();const email=$('#loginEmail').value.trim();
+ const {error}=await Auth.signInEmail(email);
+ $('#modalBody').innerHTML=error?`<h3>Алдаа</h3><p>${esc(error.message)}</p>`:`<h3>📩 Имэйлээ шалгаарай</h3><p>${esc(email)} руу холбоос илгээлээ.</p>`;
+}
+
+function renderAcct(){
+ const u=Auth.user;
+ $('#acct').innerHTML=u?`<span class="who">${esc(u.email)}</span><button onclick="Auth.signOut()">Гарах</button>`:'<button class="solid" onclick="openLogin()">Нэвтрэх</button>';
+}
+
+async function load(){
+ renderAcct();
+ if(!Auth.configured){$('#main').innerHTML='<div class="card empty">config.js-д Supabase тохируулаагүй байна.</div>';return}
+ if(!Auth.ready) return;
+ if(!Auth.user){$('#main').innerHTML='<div class="card empty">Админ хэсэгт орохын тулд нэвтэрнэ үү.<br><br><button class="btn" onclick="openLogin()">Нэвтрэх</button></div>';return}
+ if(admin===null) admin=await Auth.isAdmin();
+ if(!admin){$('#main').innerHTML='<div class="card empty">Энэ бүртгэлд админ эрх алга.</div>';return}
+ const [{data:st,error:e1},{data:rows,error:e2}]=await Promise.all([Auth.stats(),tab==='premium'?Auth.listPremium():Auth.listRequests(tab==='all'?null:tab)]);
+ if(e1||e2){$('#main').innerHTML=`<div class="card empty">Алдаа: ${esc((e1||e2).message)}</div>`;return}
+ const s=st||{};
+ const tabs=[['pending',`Хүлээгдэж буй (${s.pending||0})`],['approved','Батлагдсан'],['rejected','Татгалзсан'],['all','Бүгд'],['premium',`Премиум хэрэглэгчид (${s.premium||0})`]];
+ $('#main').innerHTML=`
+  <section class="adm-stats">
+   <div class="stat"><b>${fmt(s.users)}</b><span>Нийт хэрэглэгч</span></div>
+   <div class="stat"><b>${fmt(s.premium)}</b><span>Идэвхтэй премиум</span></div>
+   <div class="stat warm"><b>${fmt(s.revenue_month)}₮</b><span>Энэ сарын орлого</span></div>
+   <div class="stat warm"><b>${fmt(s.revenue)}₮</b><span>Нийт орлого</span></div>
+  </section>
+  <section class="card">
+   <div class="tabs">${tabs.map(([k,l])=>`<button class="tab ${k===tab?'on':''}" onclick="setTab('${k}')">${l}</button>`).join('')}</div>
+   ${tab==='premium'?premiumList(rows):reqList(rows)}
+  </section>
+  <section class="card">
+   <h2>Имэйлээр эрх өгөх</h2>
+   <form class="grant" onsubmit="grant(event)">
+    <input class="field" type="email" id="gEmail" placeholder="хэрэглэгчийн@имэйл" required>
+    <input class="field" type="number" id="gDays" value="${cfg.PREMIUM_DAYS||30}" min="1" max="3660" title="Хоног">
+    <button class="btn" type="submit">Эрх өгөх</button>
+   </form>
+   <p class="note">Хэрэглэгч сайтад нэг удаа нэвтэрсэн байх ёстой. Хугацаа нь одоогийн эрх дээр нэмэгдэнэ.</p>
+  </section>`;
+}
+function reqList(rows){
+ if(!rows||!rows.length) return '<div class="empty">Хүсэлт алга.</div>';
+ return rows.map(r=>`<div class="rq">
+  <div><div class="who">${esc(r.payer_name)} <span class="st ${r.status}">${({pending:'Хүлээгдэж буй',approved:'Батлагдсан',rejected:'Татгалзсан'})[r.status]}</span></div>
+   <div class="meta">${esc(r.email)} · <span class="ref">${esc(r.ref_code)}</span> · <b>${fmt(r.amount)}₮</b> · ${dt(r.created_at)}</div>
+   ${r.note?`<div class="meta">📝 ${esc(r.note)}</div>`:''}${r.admin_note?`<div class="meta">↩︎ ${esc(r.admin_note)}</div>`:''}</div>
+  <div class="act">${r.status==='pending'?`<input type="number" id="d-${r.id}" value="${cfg.PREMIUM_DAYS||30}" min="1" max="3660" title="Хоног">
+   <button class="btn sm ok" onclick="approve('${r.id}',this)">✓ Батлах</button><button class="btn sm no" onclick="askReject('${r.id}')">✕</button>`:`<span class="meta">${dt(r.reviewed_at)}</span>`}</div>
+ </div>`).join('');
+}
+function premiumList(rows){
+ if(!rows||!rows.length) return '<div class="empty">Идэвхтэй премиум хэрэглэгч алга.</div>';
+ return rows.map(p=>`<div class="rq"><div><div class="who">${esc(p.email)}</div><div class="meta">Бүртгүүлсэн: ${dt(p.created_at)}</div></div>
+  <div class="act"><span class="meta">${new Date(p.premium_until).toLocaleDateString()} хүртэл</span></div></div>`).join('');
+}
+function setTab(k){tab=k;load()}
+async function approve(id,btn){
+ const days=+($('#d-'+id).value)||cfg.PREMIUM_DAYS||30;
+ btn.disabled=true;
+ const {error}=await Auth.approve(id,days);
+ if(error){btn.disabled=false;toast('Алдаа: '+error.message);return}
+ toast(`✅ Батлагдлаа — ${days} хоног нээгдлээ`);load();
+}
+function askReject(id){
+ openModal(`<h3>Хүсэлтээс татгалзах</h3><form onsubmit="doReject(event,'${id}')">
+  <input class="field" id="rjReason" maxlength="300" placeholder="Шалтгаан (хэрэглэгчид харагдана)" value="Дансанд төлбөр орж ирээгүй байна">
+  <button class="btn wide" type="submit" style="background:var(--red)">Татгалзах</button></form>`);
+}
+async function doReject(e,id){
+ e.preventDefault();
+ const {error}=await Auth.reject(id,$('#rjReason').value.trim());
+ closeModal();
+ if(error){toast('Алдаа: '+error.message);return}
+ toast('Татгалзлаа');load();
+}
+async function grant(e){
+ e.preventDefault();
+ const email=$('#gEmail').value.trim(), days=+$('#gDays').value||30;
+ const {error}=await Auth.grantByEmail(email,days);
+ if(error){toast('Алдаа: '+error.message);return}
+ toast(`✅ ${email}-д ${days} хоног нээгдлээ`);$('#gEmail').value='';load();
+}
+Auth.onChange(()=>{admin=null;load()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
+load();
+</script>
+</body>
+</html>
