@@ -388,6 +388,8 @@ function renderPlan(route){
  const pro=isPro();
  $('#copyBtn').style.display=route.length&&pro?'':'none';
  $('#saveBtn').style.display=route.length&&pro&&window.Auth&&Auth.configured?'':'none';
+ $('#pdfBtn').style.display=route.length?'':'none';
+ $('#pdfBtn').textContent=pro?'🖨️ PDF / Хэвлэх':'🔒 PDF / Хэвлэх';
  $('#copyFallback').style.display='none';
  if(!route.length){$('#plan').innerHTML='<div class="empty">Аймгаа сонгоход өдөр бүрийн хөтөлбөр энд гарна.</div>';return}
  const cards=lastPlan.map(dayCard);
@@ -598,7 +600,7 @@ async function openTrips(){
  if(error){$('#modalBody').innerHTML=`<h3>Миний аяллууд</h3><p>${esc(error.message)}</p>`;return}
  window._trips=data||[];
  $('#modalBody').innerHTML='<h3>Миний аяллууд</h3>'+(data&&data.length?data.map((t,i)=>`<div class="trip-row"><div class="tn">${esc(t.name)}<small>${new Date(t.created_at).toLocaleDateString()}</small></div>
-  <button onclick="loadTrip(${i})">Нээх</button><button onclick="delTrip('${t.id}')">Устгах</button></div>`).join(''):'<p class="note">Хадгалсан аялал алга. Маршрутаа гаргаад «💾 Аяллаа хадгалах» дарна уу.</p>');
+  <button onclick="loadTrip(${i})">Нээх</button><button onclick="loadTrip(${i});setTimeout(printPlan,400)">PDF</button><button onclick="delTrip('${t.id}')">Устгах</button></div>`).join(''):'<p class="note">Хадгалсан аялал алга. Маршрутаа гаргаад «💾 Аяллаа хадгалах» дарна уу.</p>');
 }
 function loadTrip(i){
  const p=window._trips[i].payload||{};
@@ -623,8 +625,85 @@ function copyPlan(){
  try{navigator.clipboard.writeText(txt).then(()=>{$('#copyBtn').textContent='✅ Хуулагдлаа';setTimeout(()=>$('#copyBtn').textContent='📋 Хөтөлбөр хуулах',1800)},fb)}catch(e){fb()}
 }
 
+// ---------- Санал хүсэлт, холбогдох ----------
+const FB_KINDS=[['idea','💡 Санал'],['bug','🐞 Алдаа мэдээлэх'],['place','📍 Газар нэмүүлэх'],['other','✉️ Бусад']];
+function openFeedback(kind){
+ if(!window.Auth||!Auth.configured){openModal('<h3>Санал хүсэлт</h3><p>Одоогоор ажиллахгүй байна.</p>');return}
+ kind=kind||'idea';
+ const u=Auth.user;
+ openModal(`<h3>💬 Санал хүсэлт</h3>
+  <form onsubmit="sendFeedback(event)">
+   <div class="tabs" id="fbKinds">${FB_KINDS.map(([k,l])=>`<button type="button" class="tab ${k===kind?'on':''}" data-k="${k}" onclick="pickFbKind(this)">${l}</button>`).join('')}</div>
+   <textarea class="field" id="fbMsg" rows="5" maxlength="2000" minlength="3" required placeholder="Юу гэж бодож байна? Аль аймаг, ямар газар гэдгийг дэлгэрэнгүй бичвэл илүү тус болно."></textarea>
+   <input class="field" id="fbName" maxlength="100" placeholder="Нэр (заавал биш)">
+   <input class="field" id="fbContact" maxlength="150" placeholder="Утас эсвэл имэйл — хариу авах бол (заавал биш)" value="${u?esc(u.email||''):''}">
+   <div id="fbErr" class="note" style="color:var(--red)"></div>
+   <button class="btn wide" type="submit" id="fbBtn">Илгээх</button>
+  </form>`);
+ $('#modalBody').dataset.kind=kind;
+}
+function pickFbKind(b){document.querySelectorAll('#fbKinds .tab').forEach(x=>x.classList.toggle('on',x===b));$('#modalBody').dataset.kind=b.dataset.k}
+async function sendFeedback(e){
+ e.preventDefault();
+ const msg=$('#fbMsg').value.trim(); if(msg.length<3){$('#fbErr').textContent='Дор хаяж хэдэн үг бичнэ үү.';return}
+ const btn=$('#fbBtn'); btn.disabled=true; btn.textContent='Илгээж байна…';
+ const {error}=await Auth.sendFeedback({kind:$('#modalBody').dataset.kind||'idea',message:msg,name:$('#fbName').value.trim(),contact:$('#fbContact').value.trim()});
+ if(error){btn.disabled=false;btn.textContent='Илгээх';$('#fbErr').textContent='Илгээж чадсангүй: '+error.message;return}
+ $('#modalBody').innerHTML='<h3>🙏 Баярлалаа!</h3><p>Таны санал хүсэлт хүлээн авагдлаа. Сайтаа сайжруулахад ашиглана.</p><button class="btn wide" onclick="closeModal()">Хаах</button>';
+}
+// ---------- PDF / Хэвлэх ----------
+function printPlan(){
+ const route=order(); if(!route.length) return;
+ if(!isPro()){openPremium();return}
+ const plan=buildPlan(route), ret=$('#ret').checked, L=+$('#car').value, price=+$('#price').value||0;
+ let p=UB,sum=0,legs=[]; route.forEach(a=>{const d=road(p,a);legs.push([p,a,d]);sum+=d;p=a}); if(ret){const d=road(p,UB);legs.push([p,UB,d]);sum+=d}
+ const liters=sum*L/100, carTxt=$('#car').selectedOptions[0].textContent;
+ const start=$('#start').value, today=new Date().toLocaleDateString();
+ const svg=$('#svgbox svg'); 
+ const aimagInfo=route.map(a=>{
+  const is4=$('#car').value==='13';
+  return `<section class="pr-aimag"><h3>${a.n} аймаг <small>· Төв: ${a.c} · УБ-аас ${a.km} км</small></h3>
+   <table class="pr-tbl"><tr><th>Үзэх газар</th><th>Зай</th><th>Машин</th><th>Улирал</th></tr>
+   ${a.p.map(x=>`<tr${!is4&&x[3]!=='car'?' class="dim"':''}><td><b>${x[0]}</b><br><small>${x[1]}</small></td><td>${x[2]}</td><td>${x[3]==='car'?'Суудлын':'4x4'}</td><td>${x[4]}</td></tr>`).join('')}</table>
+   <p><b>Хоноглох:</b> ${a.camps.join('; ')}</p>
+   <p><b>Зам:</b> ${a.road}</p>
+   <p><b>Эмнэлэг:</b> ${a.c} — аймгийн Нэгдсэн эмнэлэг; сум бүрт сумын эрүүл мэндийн төв. <b>Цагдаа:</b> ${a.n} аймгийн Цагдаагийн газар.</p></section>`}).join('');
+ $('#printArea').innerHTML=`
+  <div class="pr-head"><div><h1>🏕️ Монгол аяллын хөтөлбөр</h1>
+   <div class="pr-route">${['Улаанбаатар',...route.map(a=>a.c+' ('+a.n+')'),...(ret?['Улаанбаатар']:[])].join(' → ')}</div></div>
+   <div class="pr-meta">${start?`Гарах өдөр: <b>${start}</b><br>`:''}Бэлтгэсэн: ${today}<br>by Dulguunsuvd Ganmyagmar</div></div>
+  <div class="pr-stats"><div><b>${fmt(sum)} км</b>Нийт зай</div><div><b>~${Math.round(sum/60)} цаг</b>Жолоодлого</div><div><b>~${fmt(liters)} л · ${fmt(liters*price)}₮</b>Шатахуун (${carTxt.split('(')[0].trim()})</div><div><b>${plan.length} өдөр</b>Хөтөлбөр</div></div>
+  <div class="pr-two">${svg?`<div class="pr-map">${svg.outerHTML}</div>`:''}
+   <ol class="pr-legs">${legs.map(([a,b,d])=>`<li>${a.c||a.n} → ${b.c||b.n} <span>${a===UB||b===UB?'':'~'}${fmt(d)} км</span></li>`).join('')}</ol></div>
+  <h2>Өдөр бүрийн хөтөлбөр</h2>
+  <div class="days">${plan.map(dayCard).join('')}</div>
+  <h2>Аймгийн мэдээлэл</h2>${aimagInfo}
+  <h2>Яаралтай үед</h2>
+  <div class="pr-sos"><div><b>101</b>Гал</div><div><b>102</b>Цагдаа</div><div><b>103</b>Түргэн тусламж</div><div><b>105</b>Онцгой байдал</div></div>
+  <ul class="pr-check"><li>☐ Нөөц дугуй, домкрат, трос, компрессор</li><li>☐ Иргэний ба жолооны үнэмлэх, даатгал</li><li>☐ Ус (хүнд өдөрт 3 л), хуурай хүнс, дулаан хувцас</li><li>☐ Power bank, офлайн газрын зураг</li><li>☐ Анхны тусламжийн цүнх</li><li>☐ Маршрут, буцах өдрөө гэр бүлдээ хэлсэн</li></ul>
+  <div class="pr-foot">Монгол аялал · ${location.host}${location.pathname} · by Dulguunsuvd Ganmyagmar — Зай, цаг ойролцоо утга.</div>`;
+ const done=()=>{document.body.classList.remove('printing');window.removeEventListener('afterprint',done)};
+ window.addEventListener('afterprint',done);
+ document.body.classList.add('printing');
+ const t=document.title; document.title='Монгол-аялал-'+route.map(a=>a.n).join('-');
+ setTimeout(()=>{window.print();document.title=t;setTimeout(done,1500)},150);
+}
+
+function renderFooter(){
+ const cfg=window.APP_CONFIG||{}, el=$('#footContact'); if(!el) return;
+ const items=[];
+ if(cfg.CONTACT){
+  const c=String(cfg.CONTACT).trim(), digits=c.replace(/[^0-9+]/g,'');
+  items.push(/^[0-9 +-]+$/.test(c)?`<li>📞 <a href="tel:${esc(digits)}">${esc(c)}</a></li>`:/^https?:/.test(c)?`<li>🔗 <a href="${esc(c)}" target="_blank" rel="noopener">${esc(c.replace(/^https?:\/\//,''))}</a></li>`:`<li>📞 ${esc(c)}</li>`);
+ }
+ items.push('<li>💬 <a href="#" onclick="openFeedback();return false">Санал хүсэлт илгээх</a></li>');
+ items.push('<li>🆘 <a href="#sos" onclick="goSOS();return false">Яаралтай тусламж</a></li>');
+ el.innerHTML=items.join('');
+ const y=$('#yr'); if(y) y.textContent=new Date().getFullYear();
+}
+
 function render(){renderChips();const r=order();renderMap(r);renderSummary(r);renderPlan(r);renderDetails(r);renderAcct()}
 if(window.Auth) Auth.onChange(()=>{render();if(Auth.recovery)openNewPassword()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
 ['car','price','perday','ret','sdays','start'].forEach(id=>$('#'+id).addEventListener('input',render));
-render();
+render();renderFooter();

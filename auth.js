@@ -72,6 +72,20 @@
         .order('created_at', { ascending: false }).limit(10);
     },
 
+    // Санал хүсэлт
+    sendFeedback(f) {
+      const row = { kind: f.kind, message: f.message, name: f.name || null, contact: f.contact || null, page: (location.pathname + location.hash).slice(0, 300) };
+      if (state.user) row.user_id = state.user.id; else row.user_id = null;
+      return sb.from('feedback').insert(row);
+    },
+    listFeedback(status) {
+      let q = sb.from('feedback').select('*').order('created_at', { ascending: false }).limit(300);
+      if (status) q = q.eq('status', status);
+      return q;
+    },
+    countNewFeedback() { return sb.from('feedback').select('id', { count: 'exact', head: true }).eq('status', 'new') },
+    setFeedbackStatus(id, status) { return sb.from('feedback').update({ status }).eq('id', id) },
+
     // Админ
     async isAdmin() { if (!sb || !state.user) return false; const { data } = await sb.rpc('is_admin'); return !!data },
     listRequests(status) {

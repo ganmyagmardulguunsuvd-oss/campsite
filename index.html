@@ -6,13 +6,14 @@
 <title>Монгол аялал — 21 аймгийн маршрут төлөвлөгч</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=202611152246">
+<link rel="stylesheet" href="style.css?v=202611152252">
 </head>
 <body>
 <header>
   <div class="wrap">
     <div class="acct" id="acct"></div>
     <h1>🏕️ Монгол аялал — маршрут төлөвлөгч</h1>
+    <div class="byline">by <b>Dulguunsuvd Ganmyagmar</b></div>
     <p>21 аймгаас нэг эсвэл хэдийг сонгоход маршрут, үзэсгэлэнт газар, амралтын бааз, дэлгүүр, шатахуун, эмнэлэг, цагдаа, машин унааны мэдээллийг нэг дор гаргана.</p>
   </div>
 </header>
@@ -21,6 +22,7 @@
   <div class="modal-box"><button class="modal-x" onclick="closeModal()" aria-label="Хаах">×</button><div id="modalBody"></div></div>
 </div>
 <div class="toast" id="toast"></div>
+<div id="printArea"></div>
 
 <button class="sos-btn" onclick="goSOS()">🆘 Яаралтай тусламж</button>
 
@@ -71,6 +73,7 @@
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn ghost" id="saveBtn" onclick="saveTrip()" style="display:none">💾 Аяллаа хадгалах</button>
       <button class="btn ghost" id="copyBtn" onclick="copyPlan()" style="display:none">📋 Хөтөлбөр хуулах</button>
+      <button class="btn" id="pdfBtn" onclick="printPlan()" style="display:none">🖨️ PDF / Хэвлэх</button>
     </div>
   </div>
   <div id="plan"></div>
@@ -159,13 +162,30 @@
 </section>
 
 </main>
-<footer class="wrap">
-  Зай нь ойролцоо утга. Улаанбаатараас аймгийн төв хүртэлх зай нь замын зай, аймаг хоорондын зай нь шулуун зайг ~1.3-аар үржүүлсэн тооцоо. Кемп, дэлгүүр, станц, эмнэлгийн хаяг, цагийн хуваарь өөрчлөгддөг тул "газрын зургаас хайх" холбоосоор шинэчилсэн мэдээллийг шалгаарай.
+<footer class="site-foot">
+  <div class="wrap foot-grid">
+    <div>
+      <div class="foot-brand">🏕️ Монгол аялал</div>
+      <div class="foot-by">by <b>Dulguunsuvd Ganmyagmar</b></div>
+      <p class="foot-note">Зай нь ойролцоо утга. Улаанбаатараас аймгийн төв хүртэлх зай нь замын зай, аймаг хоорондын зай нь шулуун зайг ~1.3-аар үржүүлсэн тооцоо. Кемп, дэлгүүр, станц, эмнэлгийн мэдээлэл өөрчлөгддөг тул газрын зургийн холбоосоор шалгаарай.</p>
+    </div>
+    <div>
+      <h4>Холбогдох</h4>
+      <ul class="foot-list" id="footContact"></ul>
+    </div>
+    <div>
+      <h4>Санал хүсэлт</h4>
+      <p class="foot-note" style="margin-top:0">Алдаа олсон, шинэ газар нэмүүлэх, сайжруулах санаа байвал бидэнд бичээрэй.</p>
+      <button class="btn" onclick="openFeedback()">💬 Санал хүсэлт илгээх</button>
+    </div>
+  </div>
+  <div class="wrap foot-copy">© <span id="yr"></span> Монгол аялал · by Dulguunsuvd Ganmyagmar</div>
 </footer>
+<button class="fb-btn" onclick="openFeedback()" aria-label="Санал хүсэлт">💬 <span>Санал хүсэлт</span></button>
 
-<script src="config.js?v=202611152246"></script>
+<script src="config.js?v=202611152252"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="auth.js?v=202611152246"></script>
-<script src="app.js?v=202611152246"></script>
+<script src="auth.js?v=202611152252"></script>
+<script src="app.js?v=202611152252"></script>
 </body>
 </html>

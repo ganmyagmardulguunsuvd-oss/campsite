@@ -146,3 +146,61 @@ header .wrap{position:relative}
 
 .qr-save{display:inline-block;margin-top:8px;text-decoration:none;color:var(--ink);padding:6px 12px}
 .qr-tip{margin-top:8px;line-height:1.45;text-align:left;background:var(--sky2);border-radius:8px;padding:8px 10px}
+
+/* ---- Гарын үсэг, хөл, санал хүсэлт ---- */
+.byline{font-size:15px;margin:-2px 0 10px;opacity:.95;letter-spacing:.2px}
+.byline b{background:linear-gradient(90deg,#ffd479,#ffb3c7,#9be7ff);-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:700}
+.site-foot{background:#1f2a37;color:#d6dbe1;margin-top:34px;padding:30px 0 0}
+.site-foot a{color:#9fd0ff}
+.foot-grid{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:26px}
+@media(max-width:760px){.foot-grid{grid-template-columns:1fr}}
+.foot-brand{font-size:19px;font-weight:700;color:#fff}
+.foot-by{font-size:14px;margin:2px 0 8px}
+.foot-by b{color:#ffd479}
+.site-foot h4{margin:0 0 10px;color:#fff;font-size:15px}
+.foot-note{font-size:13px;color:#aab3bd;line-height:1.5}
+.foot-list{list-style:none;margin:0;padding:0;font-size:14.5px}
+.foot-list li{margin-bottom:8px}
+.foot-copy{border-top:1px solid #334155;margin-top:22px;padding:14px 18px 90px;font-size:13px;color:#8b95a1}
+.fb-btn{position:fixed;left:16px;bottom:16px;z-index:50;background:#fff;color:var(--ink);border:1.5px solid var(--line);border-radius:999px;padding:11px 16px;font:600 14px Rubik,sans-serif;box-shadow:0 6px 18px rgba(0,0,0,.12);cursor:pointer}
+@media(max-width:560px){.fb-btn span{display:none}.fb-btn{padding:11px 13px}}
+textarea.field{resize:vertical;font:15px Rubik,sans-serif}
+
+/* ---- PDF / Хэвлэх ---- */
+#printArea{display:none}
+@media print{
+ @page{size:A4;margin:12mm}
+ body.printing{background:#fff}
+ body.printing > *:not(#printArea){display:none!important}
+ body.printing #printArea{display:block;font-size:12px;color:#111}
+ #printArea *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+ #printArea h2{font-size:16px;margin:16px 0 8px;border-bottom:2px solid #1d4e89;padding-bottom:3px;color:#1d4e89;break-after:avoid}
+ #printArea a{color:inherit;text-decoration:none}
+ #printArea .slot a{display:none}
+ .pr-head{display:flex;justify-content:space-between;gap:12px;border-bottom:3px solid #d9731f;padding-bottom:8px}
+ .pr-head h1{margin:0;font-size:22px;color:#1d4e89}
+ .pr-route{font-weight:600;margin-top:4px}
+ .pr-meta{text-align:right;font-size:11px;color:#555}
+ .pr-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:10px 0}
+ .pr-stats div{background:#eef3fa;border-radius:6px;padding:6px 8px;font-size:11px;color:#555}
+ .pr-stats b{display:block;font-size:14px;color:#1d4e89}
+ .pr-two{display:grid;grid-template-columns:1.6fr 1fr;gap:10px;align-items:start}
+ .pr-map svg{width:100%;height:auto}
+ .pr-legs{margin:0;padding-left:18px}.pr-legs li{margin-bottom:4px}.pr-legs span{color:#666}
+ #printArea .days{gap:6px}
+ #printArea .day{break-inside:avoid;border:1px solid #ccc}
+ #printArea .day-head{padding:5px 8px}
+ #printArea .day-body{padding:4px 8px 6px}
+ #printArea .slot{padding:1px 0;font-size:11.5px}
+ .pr-aimag{break-inside:avoid;margin-bottom:10px}
+ .pr-aimag h3{margin:6px 0;font-size:14px}.pr-aimag h3 small{font-weight:400;color:#666}
+ .pr-aimag p{margin:3px 0}
+ .pr-tbl{width:100%;border-collapse:collapse;font-size:11px}
+ .pr-tbl th,.pr-tbl td{border:1px solid #ccc;padding:3px 5px;text-align:left;vertical-align:top}
+ .pr-tbl th{background:#f3f4f6}.pr-tbl tr.dim{color:#999}
+ .pr-sos{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;break-inside:avoid}
+ .pr-sos div{border:1.5px solid #c0392b;border-radius:6px;text-align:center;padding:4px;font-size:11px}
+ .pr-sos b{display:block;font-size:18px;color:#c0392b}
+ .pr-check{columns:2;font-size:11.5px;padding-left:16px;list-style:none}
+ .pr-foot{margin-top:12px;border-top:1px solid #ccc;padding-top:6px;font-size:10px;color:#777}
+}
