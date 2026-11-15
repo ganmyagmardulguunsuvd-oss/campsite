@@ -479,7 +479,10 @@ function openPayForm(){
   ${hasBank?`
   <div class="pay-box">
    <div class="pay-step">1. Дараах данс руу <b>${fmt(price)}₮</b> шилжүүлнэ</div>
-   ${cfg.BANK_QR_IMAGE?`<div class="qr"><img src="${esc(cfg.BANK_QR_IMAGE)}" alt="Төлбөрийн QR"><small>Банкны аппаараа уншуулна</small></div>`:''}
+   ${cfg.BANK_QR_IMAGE?`<div class="qr"><a href="${esc(cfg.BANK_QR_IMAGE)}" target="_blank" rel="noopener" title="Томоор харах"><img src="${esc(cfg.BANK_QR_IMAGE)}" alt="Төлбөрийн QR"></a>
+    <small>Банкны аппаараа уншуулна</small>
+    <a class="copy qr-save" href="${esc(cfg.BANK_QR_IMAGE)}" download="campsite-tulbur-qr.png">📥 QR зураг хадгалах</a>
+    <small class="qr-tip">📱 Утсаараа үзэж байгаа бол: QR-ыг хадгалаад банкны аппын <b>QR уншуулах → Зургаас (Gallery)</b> хэсгээс сонгоно. Эсвэл доорх дансны дугаар руу шилжүүлнэ.</small></div>`:''}
    ${payRow('Банк',cfg.BANK_NAME)}${payRow('Данс',cfg.BANK_ACCOUNT)}${payRow('Хүлээн авагч',cfg.BANK_HOLDER)}
    <div class="pay-row ref"><span>Гүйлгээний утга</span><b>${ref}</b><button type="button" class="copy" onclick="copyText('${ref}',this)">Хуулах</button></div>
    <p class="note" style="margin:6px 0 0">⚠️ Гүйлгээний утгад заавал <b>${ref}</b> гэж бичнэ үү. Үүгээр таны төлбөрийг танина.</p>

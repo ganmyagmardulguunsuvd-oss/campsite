@@ -143,3 +143,6 @@ header .wrap{position:relative}
 .qr img{width:200px;max-width:100%;border-radius:10px;border:1px solid var(--line);background:#fff}
 .qr small{display:block;color:var(--muted);font-size:12.5px}
 .btn:disabled{opacity:.6;cursor:wait}
+
+.qr-save{display:inline-block;margin-top:8px;text-decoration:none;color:var(--ink);padding:6px 12px}
+.qr-tip{margin-top:8px;line-height:1.45;text-align:left;background:var(--sky2);border-radius:8px;padding:8px 10px}
