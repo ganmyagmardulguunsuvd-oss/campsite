@@ -4,7 +4,7 @@
   const configured = !!(cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY && window.supabase);
   const sb = configured ? window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY) : null;
 
-  const state = { user: null, profile: null, pending: null, ready: !configured };
+  const state = { user: null, profile: null, pending: null, recovery: false, ready: !configured };
   const listeners = [];
   const emit = () => listeners.forEach(f => { try { f(state) } catch (e) { console.error(e) } });
 
@@ -38,6 +38,13 @@
     signInGoogle() {
       return sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: redirect() } });
     },
+    signUpPassword(email, password) {
+      return sb.auth.signUp({ email, password, options: { emailRedirectTo: redirect() } });
+    },
+    signInPassword(email, password) { return sb.auth.signInWithPassword({ email, password }) },
+    resetPassword(email) { return sb.auth.resetPasswordForEmail(email, { redirectTo: redirect() }) },
+    async updatePassword(password) { const r = await sb.auth.updateUser({ password }); if (!r.error) state.recovery = false; return r },
+    get recovery() { return state.recovery },
     signInEmail(email) {
       return sb.auth.signInWithOtp({ email, options: { emailRedirectTo: redirect() } });
     },
@@ -85,6 +92,7 @@
   if (sb) {
     sb.auth.onAuthStateChange((event, session) => {
       state.user = session ? session.user : null;
+      if (event === 'PASSWORD_RECOVERY') state.recovery = true;
       // Supabase-ийн callback дотор шууд await хийвэл гацах тул дараагийн эргэлтэд ачаална
       setTimeout(async () => { await loadProfile(); state.ready = true; emit() }, 0);
     });

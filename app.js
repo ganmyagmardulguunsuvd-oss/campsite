@@ -424,22 +424,85 @@ function renderAcct(){
   <button onclick="Auth.signOut()">Гарах</button>`;
 }
 
-function openLogin(){
+const authErr=m=>{
+ if(/Invalid login credentials/i.test(m)) return 'Имэйл эсвэл нууц үг буруу байна.';
+ if(/already registered|already been registered/i.test(m)) return 'Энэ имэйл бүртгэлтэй байна. «Нэвтрэх» хэсгээр орно уу.';
+ if(/Email not confirmed/i.test(m)) return 'Имэйл баталгаажаагүй байна. Имэйлээ шалгана уу.';
+ if(/at least 6|Password should/i.test(m)) return 'Нууц үг хамгийн багадаа 6 тэмдэгт байна.';
+ if(/rate limit|too many/i.test(m)) return 'Хэт олон оролдлого хийлээ. Түр хүлээгээд дахин оролдоно уу.';
+ if(/valid email|invalid format/i.test(m)) return 'Имэйл хаяг буруу байна.';
+ return m;
+};
+function openLogin(mode){
  if(!Auth.configured){openModal('<h3>Нэвтрэх</h3><p>Supabase тохируулаагүй байна. <code>config.js</code> файлд SUPABASE_URL, SUPABASE_ANON_KEY-г оруулна уу.</p>');return}
- openModal(`<h3>Нэвтрэх / Бүртгүүлэх</h3>
-  <button class="btn wide google" onclick="Auth.signInGoogle()"><b style="color:#4285f4">G</b> Google-ээр нэвтрэх</button>
-  <div class="or">эсвэл имэйлээр</div>
-  <form onsubmit="emailLogin(event)">
-   <input class="field" type="email" id="loginEmail" placeholder="таны@имэйл.mn" required>
-   <button class="btn wide" type="submit">Нэвтрэх холбоос илгээх</button>
+ mode=mode||'login';
+ if(mode==='reset'){
+  openModal(`<h3>Нууц үг сэргээх</h3>
+   <form onsubmit="doReset(event)"><input class="field" type="email" id="authEmail" placeholder="таны@имэйл.mn" required>
+   <button class="btn wide" type="submit">Сэргээх холбоос илгээх</button></form>
+   <p class="note"><a href="#" onclick="openLogin('login');return false">← Нэвтрэх рүү буцах</a></p>`);
+  return;
+ }
+ if(mode==='magic'){
+  openModal(`<h3>Имэйлээр нэвтрэх</h3>
+   <form onsubmit="emailLogin(event)"><input class="field" type="email" id="loginEmail" placeholder="таны@имэйл.mn" required>
+   <button class="btn wide" type="submit">Нэвтрэх холбоос илгээх</button></form>
+   <p class="note">Имэйлд ирсэн холбоос дээр дарахад нэвтэрнэ. <a href="#" onclick="openLogin('login');return false">← Буцах</a></p>`);
+  return;
+ }
+ const reg=mode==='signup';
+ openModal(`<div class="tabs" style="margin-bottom:14px">
+   <button class="tab ${reg?'':'on'}" onclick="openLogin('login')">Нэвтрэх</button>
+   <button class="tab ${reg?'on':''}" onclick="openLogin('signup')">Бүртгүүлэх</button></div>
+  <form onsubmit="pwAuth(event,${reg})">
+   <input class="field" type="email" id="authEmail" placeholder="Имэйл" autocomplete="email" required>
+   <input class="field" type="password" id="authPass" placeholder="Нууц үг (6+ тэмдэгт)" minlength="6" autocomplete="${reg?'new-password':'current-password'}" required>
+   ${reg?'<input class="field" type="password" id="authPass2" placeholder="Нууц үгээ давтах" minlength="6" autocomplete="new-password" required>':''}
+   <div id="authMsg" class="note" style="color:var(--red);min-height:0"></div>
+   <button class="btn wide" type="submit" id="authBtn">${reg?'Бүртгүүлэх':'Нэвтрэх'}</button>
   </form>
-  <p class="note">Нууц үг хэрэггүй. Имэйлд ирсэн холбоос дээр дарахад нэвтэрнэ.</p>`);
+  <p class="note" style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap">
+   ${reg?'':'<a href="#" onclick="openLogin(\'reset\');return false">Нууц үгээ мартсан?</a>'}
+   <a href="#" onclick="openLogin('magic');return false">Нууц үггүйгээр имэйлээр нэвтрэх</a></p>`);
+}
+async function pwAuth(e,reg){
+ e.preventDefault();
+ const email=$('#authEmail').value.trim(), pass=$('#authPass').value, msg=$('#authMsg'), btn=$('#authBtn');
+ msg.textContent='';
+ if(reg&&pass!==$('#authPass2').value){msg.textContent='Нууц үг таарахгүй байна.';return}
+ btn.disabled=true;
+ const {data,error}=reg?await Auth.signUpPassword(email,pass):await Auth.signInPassword(email,pass);
+ btn.disabled=false;
+ if(error){msg.textContent=authErr(error.message);return}
+ if(reg&&!data.session){$('#modalBody').innerHTML=`<h3>📩 Имэйлээ баталгаажуулна уу</h3><p><b>${esc(email)}</b> руу баталгаажуулах холбоос илгээлээ.</p>`;return}
+ closeModal();toast(reg?'🎉 Тавтай морил! Бүртгэл үүслээ':'Амжилттай нэвтэрлээ');
+}
+async function doReset(e){
+ e.preventDefault();
+ const email=$('#authEmail').value.trim();
+ const {error}=await Auth.resetPassword(email);
+ $('#modalBody').innerHTML=error?`<h3>Алдаа</h3><p>${esc(authErr(error.message))}</p>`:`<h3>📩 Имэйлээ шалгаарай</h3><p><b>${esc(email)}</b> руу нууц үг сэргээх холбоос илгээлээ. Холбоос дээр дарсны дараа шинэ нууц үгээ оруулна.</p>`;
+}
+function openNewPassword(){
+ openModal(`<h3>Шинэ нууц үг тохируулах</h3>
+  <form onsubmit="saveNewPassword(event)">
+   <input class="field" type="password" id="np1" placeholder="Шинэ нууц үг (6+ тэмдэгт)" minlength="6" autocomplete="new-password" required>
+   <input class="field" type="password" id="np2" placeholder="Давтах" minlength="6" autocomplete="new-password" required>
+   <div id="npMsg" class="note" style="color:var(--red)"></div>
+   <button class="btn wide" type="submit">Хадгалах</button></form>`);
+}
+async function saveNewPassword(e){
+ e.preventDefault();
+ if($('#np1').value!==$('#np2').value){$('#npMsg').textContent='Нууц үг таарахгүй байна.';return}
+ const {error}=await Auth.updatePassword($('#np1').value);
+ if(error){$('#npMsg').textContent=authErr(error.message);return}
+ closeModal();toast('✅ Нууц үг шинэчлэгдлээ');
 }
 async function emailLogin(e){
  e.preventDefault();
  const email=$('#loginEmail').value.trim(); if(!email) return;
  const {error}=await Auth.signInEmail(email);
- $('#modalBody').innerHTML=error?`<h3>Алдаа гарлаа</h3><p>${esc(error.message)}</p>`:`<h3>📩 Имэйлээ шалгаарай</h3><p><b>${esc(email)}</b> хаяг руу нэвтрэх холбоос илгээлээ. Spam хавтсаа ч шалгаарай.</p>`;
+ $('#modalBody').innerHTML=error?`<h3>Алдаа гарлаа</h3><p>${esc(authErr(error.message))}</p>`:`<h3>📩 Имэйлээ шалгаарай</h3><p><b>${esc(email)}</b> хаяг руу нэвтрэх холбоос илгээлээ. Spam хавтсаа ч шалгаарай.</p>`;
 }
 
 function copyText(txt,btn){
@@ -561,7 +624,7 @@ function copyPlan(){
 }
 
 function render(){renderChips();const r=order();renderMap(r);renderSummary(r);renderPlan(r);renderDetails(r);renderAcct()}
-if(window.Auth) Auth.onChange(render);
+if(window.Auth) Auth.onChange(()=>{render();if(Auth.recovery)openNewPassword()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
 ['car','price','perday','ret','sdays','start'].forEach(id=>$('#'+id).addEventListener('input',render));
 render();
