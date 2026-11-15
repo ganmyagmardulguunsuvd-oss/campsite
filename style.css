@@ -204,3 +204,6 @@ textarea.field{resize:vertical;font:15px Rubik,sans-serif}
  .pr-check{columns:2;font-size:11.5px;padding-left:16px;list-style:none}
  .pr-foot{margin-top:12px;border-top:1px solid #ccc;padding-top:6px;font-size:10px;color:#777}
 }
+
+.trial-btn{margin-top:8px;border-color:var(--steppe);color:var(--steppe);background:#fff}
+.trial-box{background:var(--steppe2);border-radius:12px;padding:10px 12px;margin:0 0 10px;font-size:14px}

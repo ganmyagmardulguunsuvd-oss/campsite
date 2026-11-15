@@ -11,7 +11,7 @@
   async function loadProfile() {
     if (!sb || !state.user) { state.profile = null; state.pending = null; return }
     const { data, error } = await sb.from('profiles')
-      .select('id,email,premium_until').eq('id', state.user.id).maybeSingle();
+      .select('id,email,premium_until,trial_used_at').eq('id', state.user.id).maybeSingle();
     if (error) console.warn('profile:', error.message);
     state.profile = data || null;
     const r = await sb.from('payment_requests').select('id,ref_code,amount,status,created_at')
@@ -31,6 +31,13 @@
       const u = state.profile && state.profile.premium_until;
       return !!u && new Date(u) > new Date();
     },
+    trialAvailable() { return !!(state.user && state.profile && !state.profile.trial_used_at) },
+    isTrial() {
+      const p = state.profile;
+      if (!p || !p.trial_used_at || !p.premium_until || !Auth.isPremium()) return false;
+      return new Date(p.premium_until) - new Date(p.trial_used_at) <= 86400000 + 60000;
+    },
+    async startTrial() { const r = await sb.rpc('start_trial'); await loadProfile(); emit(); return r },
     premiumUntil() {
       const u = state.profile && state.profile.premium_until;
       return u ? new Date(u) : null;

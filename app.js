@@ -403,6 +403,7 @@ function renderPlan(route){
     <div class="price">${fmt(cfg.PREMIUM_PRICE||9900)}₮ <small>/ ${cfg.PREMIUM_DAYS||30} хоног</small></div>
     <ul><li>${lastPlan.length} өдрийн бүтэн хөтөлбөр, цагийн хуваарьтай</li><li>Аяллаа хадгалж, дараа нь нээх</li><li>Хөтөлбөрөө хуулж, найзуудтайгаа хуваалцах</li></ul>
     <button class="btn wide" onclick="openPremium()">Премиум авах</button>
+    ${trialBtn()}
    </div></div></div>`:''}
   <p class="note">Эхний өдрийн хөтөлбөр үнэгүй. Маршрут, зардал, аймгийн мэдээлэл, яаралтай тусламжийн хэсэг бүгд үнэгүй.</p>`;
 }
@@ -421,7 +422,7 @@ function renderAcct(){
  if(!u){el.innerHTML='<button class="solid" onclick="openLogin()">Нэвтрэх</button>';return}
  const pro=Auth.isPremium(), until=Auth.premiumUntil();
  el.innerHTML=`<span class="who">${esc(u.email||'')}</span>
-  ${pro?`<span class="badge pro" title="${until?until.toLocaleDateString():''} хүртэл">★ Премиум</span>`:Auth.pending?'<button onclick="openPremium()">⏳ Шалгагдаж байна</button>':'<span class="badge">Үнэгүй</span>'}
+  ${pro?`<span class="badge pro" title="${until?until.toLocaleString():''} хүртэл">${Auth.isTrial()?'🎁 Туршилт':'★ Премиум'}</span>`:Auth.pending?'<button onclick="openPremium()">⏳ Шалгагдаж байна</button>':'<span class="badge">Үнэгүй</span>'}
   ${pro?'<button onclick="openTrips()">Миний аяллууд</button>':Auth.pending?'':'<button class="solid" onclick="openPremium()">Премиум</button>'}
   <button onclick="Auth.signOut()">Гарах</button>`;
 }
@@ -540,7 +541,8 @@ function openPayForm(){
  const hasBank=cfg.BANK_ACCOUNT||cfg.BANK_QR_IMAGE;
  openModal(`<h3>★ Премиум эрх</h3>
   <div class="price">${fmt(price)}₮ <small>/ ${days} хоног</small></div>
-  <ul class="info-list" style="margin:10px 0 14px"><li>Өдөр бүрийн бүтэн хөтөлбөр</li><li>Аяллаа хадгалах, дахин нээх</li><li>Хөтөлбөр хуулж хуваалцах</li></ul>
+  <ul class="info-list" style="margin:10px 0 14px"><li>Өдөр бүрийн бүтэн хөтөлбөр</li><li>Аяллаа хадгалах, дахин нээх</li><li>Хөтөлбөр хуулж хуваалцах</li><li>PDF болгож хадгалах, хэвлэх</li></ul>
+  ${Auth.trialAvailable()?`<div class="trial-box">🎁 Эхлээд үнэгүй туршаад үзэх үү? ${trialBtn()}</div>`:''}
   ${hasBank?`
   <div class="pay-box">
    <div class="pay-step">1. Дараах данс руу <b>${fmt(price)}₮</b> шилжүүлнэ</div>
@@ -651,6 +653,22 @@ async function sendFeedback(e){
  if(error){btn.disabled=false;btn.textContent='Илгээх';$('#fbErr').textContent='Илгээж чадсангүй: '+error.message;return}
  $('#modalBody').innerHTML='<h3>🙏 Баярлалаа!</h3><p>Таны санал хүсэлт хүлээн авагдлаа. Сайтаа сайжруулахад ашиглана.</p><button class="btn wide" onclick="closeModal()">Хаах</button>';
 }
+// ---------- 1 өдрийн туршилт ----------
+let wantTrial=false;
+function trialBtn(){
+ if(!window.Auth||!Auth.configured) return '';
+ if(Auth.user&&!Auth.trialAvailable()) return '';
+ return `<button class="btn ghost wide trial-btn" onclick="startTrial()">🎁 1 өдөр үнэгүй турших</button>`;
+}
+async function startTrial(){
+ if(!Auth.user){wantTrial=true;openLogin('signup');toast('Бүртгүүлсний дараа туршилт автоматаар нээгдэнэ');return}
+ if(!Auth.trialAvailable()){toast('Туршилтын эрхээ аль хэдийн ашигласан байна');return}
+ const {error}=await Auth.startTrial();
+ if(error){toast(error.message);return}
+ closeModal();toast('🎁 24 цагийн премиум нээгдлээ! Бүтэн хөтөлбөрөө үзээрэй');
+ const pb=$('#planbox'); if(pb&&order().length) pb.scrollIntoView({behavior:'smooth'});
+}
+
 // ---------- PDF / Хэвлэх ----------
 function printPlan(){
  const route=order(); if(!route.length) return;
@@ -703,7 +721,7 @@ function renderFooter(){
 }
 
 function render(){renderChips();const r=order();renderMap(r);renderSummary(r);renderPlan(r);renderDetails(r);renderAcct()}
-if(window.Auth) Auth.onChange(()=>{render();if(Auth.recovery)openNewPassword()});
+if(window.Auth) Auth.onChange(()=>{render();if(Auth.recovery)openNewPassword();if(wantTrial&&Auth.user&&Auth.ready){wantTrial=false;startTrial()}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
 ['car','price','perday','ret','sdays','start'].forEach(id=>$('#'+id).addEventListener('input',render));
 render();renderFooter();
