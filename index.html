@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Монгол аялал — 21 аймгийн маршрут төлөвлөгч</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="acct" id="acct"></div>
+    <h1>🏕️ Монгол аялал — маршрут төлөвлөгч</h1>
+    <p>21 аймгаас нэг эсвэл хэдийг сонгоход маршрут, үзэсгэлэнт газар, амралтын бааз, дэлгүүр, шатахуун, эмнэлэг, цагдаа, машин унааны мэдээллийг нэг дор гаргана.</p>
+  </div>
+</header>
+
+<div class="modal" id="modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal-box"><button class="modal-x" onclick="closeModal()" aria-label="Хаах">×</button><div id="modalBody"></div></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<button class="sos-btn" onclick="goSOS()">🆘 Яаралтай тусламж</button>
+
+<main class="wrap">
+
+<section class="card">
+  <h2><span class="num">1</span> Очих аймгаа сонгоно уу <small style="font-weight:400;color:var(--muted);font-size:14px">(1 эсвэл 2–3 аймаг)</small></h2>
+  <div class="regions" id="regions"></div>
+  <div class="opts">
+    <label>Машины төрөл
+      <select id="car">
+        <option value="6">Суудлын (хайбрид, ~6 л/100км)</option>
+        <option value="9">Суудлын (энгийн, ~9 л/100км)</option>
+        <option value="13" selected>Жийп / 4x4 (~13 л/100км)</option>
+        <option value="11">Микро автобус (~11 л/100км)</option>
+      </select>
+    </label>
+    <label>Шатахууны үнэ (₮/литр)
+      <input type="number" id="price" value="2700" min="0" step="50">
+    </label>
+    <label>Өдөрт явах зай (км)
+      <input type="number" id="perday" value="400" min="100" step="50">
+    </label>
+    <label>Аймаг бүрт үзэх хоног
+      <select id="sdays">
+        <option value="auto" selected>Автомат</option>
+        <option value="1">1 хоног</option>
+        <option value="2">2 хоног</option>
+        <option value="3">3 хоног</option>
+      </select>
+    </label>
+    <label>Гарах өдөр
+      <input type="date" id="start" style="font:15px Rubik,sans-serif;padding:7px 10px;border:1.5px solid var(--line);border-radius:10px;background:#fff">
+    </label>
+    <label class="check"><input type="checkbox" id="ret" checked> Улаанбаатар руу буцна</label>
+    <button class="btn ghost" onclick="clearSel()">Цэвэрлэх</button>
+  </div>
+</section>
+
+<section class="grid2">
+  <div class="card" id="map"><h2><span class="num">2</span> Маршрутын зураг</h2><div id="svgbox"></div></div>
+  <div class="card"><h2><span class="num">3</span> Маршрут ба зардал</h2><div id="summary"></div></div>
+</section>
+
+<section class="card" id="planbox">
+  <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;justify-content:space-between;margin-bottom:12px">
+    <h2 style="margin:0"><span class="num">4</span> Өдөр бүрийн хөтөлбөр</h2>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn ghost" id="saveBtn" onclick="saveTrip()" style="display:none">💾 Аяллаа хадгалах</button>
+      <button class="btn ghost" id="copyBtn" onclick="copyPlan()" style="display:none">📋 Хөтөлбөр хуулах</button>
+    </div>
+  </div>
+  <div id="plan"></div>
+  <textarea id="copyFallback" readonly style="display:none;width:100%;height:220px;margin-top:10px;font:13px monospace;border:1px solid var(--line);border-radius:10px;padding:10px"></textarea>
+</section>
+
+<section id="details"></section>
+
+<section class="card" id="sos">
+  <h2>🆘 Аяллын үеийн яаралтай тусламж</h2>
+  <div class="sos-grid">
+    <div class="sos-num"><b>101</b><span>Гал түймэр</span></div>
+    <div class="sos-num"><b>102</b><span>Цагдаа</span></div>
+    <div class="sos-num"><b>103</b><span>Түргэн тусламж</span></div>
+    <div class="sos-num"><b>105</b><span>Онцгой байдал (аврах)</span></div>
+  </div>
+  <p class="note" style="margin-top:0">Хөдөө холбоо муу газар дуудлага тасарвал хаяг биш, ойролцоох сум, гол, уулын нэр болон утасныхаа GPS координатыг хэлээрэй.</p>
+
+  <details><summary>🚗 Машин эвдэрсэн, дугуй хагарсан</summary><ol>
+    <li>Замын хажуу руу аюулгүй зогсож, анивчих гэрлээ асаа. Ослын гурвалжинг 20–30 м-ийн цаана тавь.</li>
+    <li>Нөөц дугуй, домкрат, чирэх трос, компрессороо аяллын өмнө заавал шалга.</li>
+    <li>Ойрын сум, кемп, шатахуун станц руу утасдаж засварчин асуу. Гол зам дээр өнгөрөх жолооч нар ихэвчлэн тусалдаг.</li>
+    <li>Шөнө болж байгаа бол машинаасаа холдож явган явахгүй. Дулаан хувцас, ус, хоолтойгоо машиндаа хүлээ.</li>
+    <li>Аюултай нөхцөлд 105 эсвэл 102 руу залга.</li>
+  </ol></details>
+
+  <details><summary>🧭 Зам төөрсөн</summary><ol>
+    <li>Зогсоод шатахуунаа хэмнэ. Сүүлд таньсан цэг рүүгээ буцах нь ихэвчлэн хамгийн найдвартай.</li>
+    <li>Офлайн газрын зураг (Google Maps офлайн, Maps.me) аяллын өмнө татаж ав. Интернэтгүй үед ч GPS ажилладаг.</li>
+    <li>Малчин айлаас зам асуу. Зам заахдаа гол, уул, давааны нэрээр хэлдэг.</li>
+    <li>Харанхуй болсны дараа танихгүй шороон замаар бүү яв.</li>
+    <li>Утас сүлжээ барьвал 105 руу залгаж координатаа хэл.</li>
+  </ol></details>
+
+  <details><summary>💥 Зам тээврийн осол</summary><ol>
+    <li>Эхлээд өөрөө аюулгүй байрлалд ор, анивчих гэрэл асааж гурвалжин тавь.</li>
+    <li>103 (түргэн тусламж), 102 (цагдаа) руу залга.</li>
+    <li>Нуруу, хүзүүний гэмтэл сэжигтэй хүнийг шаардлагагүй бол бүү хөдөлгө. Цус алдалтыг дарж зогсоо.</li>
+    <li>Цагдаа ирэх хүртэл машинуудыг бүү хөдөлгө. Байршил, гэмтлийг зургаар ав.</li>
+    <li>Даатгалын компанидаа мэдэгд.</li>
+  </ol></details>
+
+  <details><summary>🤒 Өвдсөн, гэмтсэн</summary><ol>
+    <li>103 руу залга, эсвэл ойрын <b>сумын эрүүл мэндийн төв</b>, аймгийн <b>Нэгдсэн эмнэлэг</b> рүү оч (аймаг бүрийн хэсэгт газрын зургийн холбоос бий).</li>
+    <li>Анхны тусламжийн цүнх: боолт, наалт, ариутгагч, өвдөлт намдаагч, халуун бууруулагч, суулгалтын эсрэг эм, хувийн эм.</li>
+    <li>Говь, зуны халуунд их ус уу, малгай өмс. Наранд цохиулбал сүүдэрт хэвтүүлж, сэрүүцүүл.</li>
+    <li>Өндөр уулд (Таван Богд, Отгонтэнгэр) толгой өвдөх, бөөлжих бол доошоо буу.</li>
+  </ol></details>
+
+  <details><summary>🌪️ Цаг агаар: шуурга, үер, аянга</summary><ol>
+    <li>Гарахаасаа өмнө <a href="https://tsag-agaar.gov.mn" target="_blank" rel="noopener">tsag-agaar.gov.mn</a>-ээс урьдчилсан мэдээ хар.</li>
+    <li>Шороон шуурганы үед зогсоод, гэрлээ асааж хүлээ.</li>
+    <li>Бороотой үед хуурай голын ёроол, гуу жалгад бүү хоно. Ус ихэссэн голыг машинаар бүү гатал.</li>
+    <li>Аянгатай үед ил задгай өндөрлөг, ганц модноос хол бай.</li>
+  </ol></details>
+
+  <details><summary>🪪 Бичиг баримт, эд зүйл алдсан, хулгайд алдсан</summary><ol>
+    <li>102 руу залга, эсвэл аймгийн Цагдаагийн газарт мэдүүлэг өг.</li>
+    <li>Банкны карт алдсан бол банкныхаа лавлах утсаар картаа даруй хаалга.</li>
+    <li>Иргэний үнэмлэх, жолооны үнэмлэхийнхээ зургийг утсандаа хадгалж яв.</li>
+  </ol></details>
+
+  <details><summary>⛽ Шатахуун дуусах гэж байна</summary><ol>
+    <li>Баруун болон говийн бүсэд станц хоорондын зай хол. Аймаг, сумын төвөөс гарахдаа сав дүүргэ.</li>
+    <li>20 литрийн нөөц сав авч яв (4x4-ээр алс газар явахад заавал).</li>
+    <li>Хурдаа 70–80 км/ц болговол зарцуулалт буурна. Агааржуулагч унтраа.</li>
+  </ol></details>
+
+  <details><summary>🎒 Аяллын өмнөх шалгах жагсаалт</summary><ul>
+    <li>Машин: тос, тормоз, дугуй, нөөц дугуй, трос, хүрз, компрессор, гал унтраагуур</li>
+    <li>Бичиг баримт: иргэний ба жолооны үнэмлэх, машины гэрчилгээ, даатгал</li>
+    <li>Ус (хүн бүрт өдөрт 3 л), хуурай хүнс, дулаан хувцас (зун ч шөнө хүйтэн)</li>
+    <li>Power bank, машины цэнэглэгч, офлайн газрын зураг</li>
+    <li>Маршрут, буцах өдрөө гэр бүлдээ хэлж үлдээ</li>
+    <li>Хилийн бүс (Таван Богд, Дорнодын зарим газар г.м.): хилийн зөвшөөрөл шаардлагатай эсэхийг урьдчилан лавла</li>
+  </ul></details>
+</section>
+
+<section class="card">
+  <h2>🚌 Улаанбаатараас нийтийн тээврээр</h2>
+  <ul class="info-list">
+    <li><b>Хот хоорондын автобус:</b> баруун, хойд, өмнөд чиглэл ихэвчлэн <b>Драгон</b> автобусны төвөөс, зүүн чиглэл <b>Баянзүрх</b> авто вокзалаас хөдөлдөг. Тасалбар: <a href="https://eticket.transdep.mn" target="_blank" rel="noopener">eticket.transdep.mn</a></li>
+    <li><b>Галт тэрэг:</b> Дархан, Сүхбаатар (Сэлэнгэ), Эрдэнэт, Чойр, Сайншанд, Замын-Үүд. Тасалбар: <a href="https://www.ubtz.mn" target="_blank" rel="noopener">ubtz.mn</a></li>
+    <li><b>Дотоод нислэг:</b> алс баруун аймаг, Мөрөн, Даланзадгад, Чойбалсан зэрэг рүү. <a href="https://www.hunnuair.com" target="_blank" rel="noopener">Хүннү Эйр</a>, <a href="https://www.aeromongolia.mn" target="_blank" rel="noopener">Аэро Монголиа</a>. Хуваарь улирлаас хамаарч өөрчлөгддөг.</li>
+  </ul>
+</section>
+
+</main>
+<footer class="wrap">
+  Зай нь ойролцоо утга. Улаанбаатараас аймгийн төв хүртэлх зай нь замын зай, аймаг хоорондын зай нь шулуун зайг ~1.3-аар үржүүлсэн тооцоо. Кемп, дэлгүүр, станц, эмнэлгийн хаяг, цагийн хуваарь өөрчлөгддөг тул "газрын зургаас хайх" холбоосоор шинэчилсэн мэдээллийг шалгаарай.
+</footer>
+
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="auth.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
