@@ -205,6 +205,14 @@ function renderMap(route){
  </svg><p class="note">Цэг дээр дарж аймаг нэмж/хасч болно. Зураг схемчилсэн.</p>`;
 }
 
+function seasonBlock(route){
+ const se=curSeason(), S=SEASONS[se];
+ const good=route.reduce((n,a)=>n+a.p.filter(p=>inSeason(p,se)).length,0), all=route.reduce((n,a)=>n+a.p.length,0);
+ const ev=[];route.forEach(a=>eventsFor(a,se).forEach(e=>{if(!ev.some(x=>x.n===e.n))ev.push(e)}));
+ return `<div class="season-box s-${se}"><div class="season-h">${S.i} <b>${S.n}</b> — ${good}/${all} үзэх газар тохиромжтой${$('#season').value==='auto'?' <small>(огноогоор)</small>':''}</div>
+  ${ev.length?`<div class="season-ev2">${ev.map(e=>`🎉 <b>${e.n}</b>`).join(' · ')}</div>`:''}
+  <ul>${SEASON_TIPS[se].map(t=>`<li>${t}</li>`).join('')}</ul></div>`;
+}
 function renderSummary(route){
  if(!route.length){$('#summary').innerHTML='<div class="empty">Дээрээс аймгаа сонгоход маршрут, зай, шатахууны зардал энд гарна.</div>';return}
  const ret=$('#ret').checked, L=+$('#car').value, price=+$('#price').value||0, perday=+$('#perday').value||400;
@@ -222,6 +230,7 @@ function renderSummary(route){
    <div class="stat warm"><b>${days} өдөр</b><span>Хөтөлбөрийн урт (доор дэлгэрэнгүй)</span></div>
   </div>
   <ul class="legs">${legs.map(([a,b,d],i)=>`<li><span class="dot">${i+1}</span>${a.c||a.n} → ${b.c||b.n}<span class="km">${a===UB||b===UB?'':'~'}${fmt(d)} км · ~${(d/60).toFixed(1)} ц</span></li>`).join('')}</ul>
+  ${seasonBlock(route)}
   ${need4.length?`<div class="warn">🚙 <b>${need4.map(a=>a.n).join(', ')}</b>-ийн зарим газар руу шороон, хүнд зам байна. Тэдгээрийг үзэх бол 4x4 машин, нөөц дугуй, шатахуунтай яваарай.</div>`:''}
   ${route.some(a=>a.km>900)?`<div class="warn">🛣️ Баруун аймгууд руу УБ-аас 2–3 өдөр явдаг. Хугацаа бага бол нэг тийш нь онгоцоор нисэх боломжийг харгалзаарай.</div>`:''}
   <p class="note">Аймаг хоорондын зай нь ойролцоо тооцоо. Шатахууны үнэ, машины зарцуулалтыг дээрээс өөрчилж болно.</p>`;
@@ -231,10 +240,11 @@ const TABS=[['places','🏞️ Үзэсгэлэнт газар'],['camps','🏕�
 
 function tabBody(a,t){
  const where=`${a.c}, ${a.n}`;
- if(t==='places') return `<div class="places">${a.p.map(([n,d,dist,car,season])=>`
-   <div class="place"><h4>${n}</h4><p>${d}</p>
+ if(t==='places'){const se=curSeason(), ev=eventsFor(a,se);
+  return `${ev.length?`<div class="season-ev">${ev.map(e=>`<div>🎉 <b>${e.n}</b> — ${e.d}</div>`).join('')}</div>`:''}<div class="places">${[...a.p].sort((x,y)=>inSeason(y,se)-inSeason(x,se)).map(([n,d,dist,car,season])=>`
+   <div class="place ${inSeason([n,d,dist,car,season],se)?'':'off'}"><h4>${n}</h4>${inSeason([n,d,dist,car,season],se)?'':`<div class="off-tag">${SEASONS[se].i} ${SEASONS[se].n} тохиромжгүй</div>`}<p>${d}</p>
    <div class="tags"><span class="tag">📍 ${dist}</span><span class="tag ${car==='car'?'car':'x4'}">${car==='car'?'Суудлын машин хүрнэ':'4x4 хэрэгтэй'}</span><span class="tag">🗓️ ${season}</span></div>
-   <div style="margin-top:8px"><a href="${gm(n+' '+a.n+' Mongolia')}" target="_blank" rel="noopener">Газрын зурагт харах →</a></div></div>`).join('')}</div>`;
+   <div style="margin-top:8px"><a href="${gm(n+' '+a.n+' Mongolia')}" target="_blank" rel="noopener">Газрын зурагт харах →</a></div></div>`).join('')}</div>`;}
  if(t==='camps') return `<ul class="info-list">${a.camps.map(c=>`<li>${c}</li>`).join('')}</ul>
    <div class="links">${a.p.slice(0,3).map(x=>`<a href="${gm('жуулчны бааз '+x[0])}" target="_blank" rel="noopener">${x[0]} орчмын кемп</a>`).join('')}
    <a href="${gm('ger camp near '+a.c+' Mongolia')}" target="_blank" rel="noopener">${a.c} орчмын кемп</a>
@@ -309,6 +319,42 @@ const VIA={khovd:['uvurkhangai','bayankhongor','govialtai'],bayanulgii:['uvurkha
  govialtai:['uvurkhangai','bayankhongor'],bayankhongor:['uvurkhangai'],zavkhan:['arkhangai'],uvs:['arkhangai'],
  khuvsgul:['bulgan'],dornod:['khentii'],sukhbaatar:['khentii'],umnugovi:['dundgovi'],dornogovi:['govisumber']};
 
+// ---------- Улирал ----------
+const SEASONS={winter:{n:'Өвөл',i:'❄️',m:[12,1,2]},spring:{n:'Хавар',i:'🌱',m:[3,4,5]},summer:{n:'Зун',i:'☀️',m:[6,7,8]},autumn:{n:'Намар',i:'🍂',m:[9,10,11]}};
+const monthSeason=m=>m===12||m<=2?'winter':m<=5?'spring':m<=8?'summer':'autumn';
+function curSeason(){
+ const v=$('#season')?$('#season').value:'auto';
+ if(v!=='auto') return v;
+ const d=$('#start')&&$('#start').value?new Date($('#start').value+'T00:00:00'):new Date();
+ return monthSeason(d.getMonth()+1);
+}
+const _pm={};
+function placeMonths(str){
+ if(_pm[str]) return _pm[str];
+ const set=new Set();
+ if(/Жилийн турш/.test(str)){for(let m=1;m<=12;m++)set.add(m)}
+ const re=/(\d{1,2})\s*[–-]\s*(\d{1,2})/g;let r;
+ while((r=re.exec(str))){let a=+r[1],b=+r[2];for(let m=a;;m=m%12+1){set.add(m);if(m===b)break}}
+ if(!set.size){(str.match(/\d{1,2}/g)||[]).forEach(x=>set.add(+x))}
+ if(!set.size){for(let m=1;m<=12;m++)set.add(m)}
+ return _pm[str]=set;
+}
+const inSeason=(p,se)=>SEASONS[se||curSeason()].m.some(m=>placeMonths(p[4]).has(m));
+const EVENTS=[
+ {a:'*',m:[7],n:'Үндэсний их баяр наадам',d:'7-р сард аймаг, сум бүрт наадам болно. Кемп, буудал дүүрдэг тул урьдчилж захиалаарай.'},
+ {a:'*',m:[1,2,3],n:'Цагаан сар',d:'Билгийн тооллын шинэ жил (огноо жил бүр өөр). Хөдөө айл хэсэх, ёс заншлыг мэдрэх боломж.'},
+ {a:'khuvsgul',m:[3],n:'Хөвсгөлийн мөсний баяр',d:'Нуурын мөсөн дээр морин тэрэгний уралдаан, мөсөн баримал, тэшүүр. Хатгал орчим.'},
+ {a:'umnugovi',m:[3],n:'Мянган тэмээний наадам',d:'Тэмээн уралдаан, тэмээн поло, говийн соёл.'},
+ {a:'bayanulgii',m:[10],n:'Алтайн бүргэдийн баяр',d:'Казах бүргэдчдийн уламжлалт наадам, Өлгий орчим.'}
+];
+const eventsFor=(a,se)=>EVENTS.filter(e=>(e.a==='*'||e.a===a.id)&&SEASONS[se].m.some(m=>e.m.includes(m)));
+const SEASON_TIPS={
+ winter:['Хүйтэн −20…−40°C хүрнэ. Өдөр богино, 17–18 цагт харанхуйлна.','Зам мөстэй, цас шуурга. Өвлийн дугуй, өвлийн дизель, хөдөлгүүр халаагч хэрэгтэй.','Алс газар 2 машинаар яв, дулаан хувцас, хөнжил, нэмэлт түлш авч яв.','Олон гэр кемп өвөл хаалттай. Зочид буудал, айл буудал урьдчилж тохир.'],
+ spring:['3–5 сард шороон шуурга, хүчтэй салхи их. Нүдний шил, амны хаалт ав.','Цас хайлж шороон зам шаварлана, гол мөрний мөс сулардаг. Мөсөн дээгүүр бүү гар.','Цаг агаар өдөр дотроо огцом өөрчлөгддөг.'],
+ summer:['Аялалын оргил үе. Кемпүүд, ялангуяа 7-р сард дүүрдэг тул урьдчилж захиал.','Аадар бороо, гол үерлэх эрсдэлтэй. Ус ихэссэн голыг машинаар бүү гатал.','Ойт хангай, хойд бүсэд хачиг их (5–7 сар). Урт ханцуй, хачигны эсрэг тос хэрэглэ.','Говьд өдөр 35°C+ халуун. Хүнд өдөрт 3+ литр ус.'],
+ autumn:['9-р сар — өнгөлөг намар, аялахад хамгийн гоё үеийн нэг.','10-р сараас баруун, хойд бүсэд цас орж эхэлнэ. Уулын даваа гулгаатай.','Олон кемп 9-р сарын дунд, 10-р сард улирлаа хаадаг. Ажиллаж байгаа эсэхийг лавла.']
+};
+
 function buildPlan(route){
  const perday=+$('#perday').value||400, is4=$('#car').value==='13', ret=$('#ret').checked, sd=$('#sdays').value;
  const days=[]; let prev=UB;
@@ -341,7 +387,8 @@ function buildPlan(route){
      sleep:last?(s===UB?'Гэртээ 🏠':`${s.c} хотын зочид буудал эсвэл ойрын кемп`):(mid?`${lab(mid)} хотын зочид буудал`:'Замын дагуух сумын төвийн буудал')});
   }
   if(s!==UB){
-   const ok=s.p.filter(p=>is4||p[3]==='car'), skipped=is4?[]:s.p.filter(p=>p[3]!=='car');
+   const se=curSeason();
+   const ok=s.p.filter(p=>(is4||p[3]==='car')&&inSeason(p,se)), skipped=is4?[]:s.p.filter(p=>p[3]!=='car'&&inSeason(p,se)), offSeason=s.p.filter(p=>!inSeason(p,se));
    let nd=sd==='auto'?(ok.length>=4?2:1)+(s.km>900?1:0):+sd;
    nd=Math.max(1,Math.min(nd,Math.max(1,ok.length)));
    const groups=Array.from({length:nd},()=>[]);
@@ -355,7 +402,7 @@ function buildPlan(route){
     const key=g.length?g[0][0].split(/[ ,(]/)[0]:'';
     const camp=(key&&s.camps.find(c=>c.includes(key)))||s.camps[0];
     days.push({type:'sight',title:`${s.n}: ${g.length?g.map(p=>p[0]).join(', '):'амралтын өдөр'}`,km:0,items:slots,
-      sleep:camp,sleepAt:s.c,skipped:gi===0?skipped:[]});
+      sleep:camp,sleepAt:s.c,skipped:gi===0?skipped:[],offSeason:gi===0?offSeason:[]});
    });
   }
   prev=s;
@@ -379,6 +426,7 @@ function dayCard(d,i){
    <div class="day-body">
     ${d.items.map(([t,x,p])=>`<div class="slot"><span class="t">${hm(t)}</span><span class="x">${x}${p?` · <a href="${gm(p[0]+' Mongolia')}" target="_blank" rel="noopener">зураг</a>`:''}</span></div>`).join('')}
     ${d.skipped&&d.skipped.length?`<div class="skipped">⚠️ Суудлын машинтай тул хасагдсан (4x4 хэрэгтэй): ${d.skipped.map(p=>p[0]).join(', ')}</div>`:''}
+    ${d.offSeason&&d.offSeason.length?`<div class="skipped">${SEASONS[curSeason()].i} ${SEASONS[curSeason()].n}ийн улиралд тохиромжгүй тул хасагдсан: ${d.offSeason.map(p=>p[0]+' ('+p[4]+')').join(', ')}</div>`:''}
     <div class="sleep">🛏️ <b>Хоноглох:</b> ${d.sleep}</div>
    </div></div>`;
 }
@@ -588,7 +636,7 @@ async function checkStatus(){
  toast('Одоогоор шалгагдаж байна');
 }
 
-function tripPayload(){return{sel,car:$('#car').value,price:$('#price').value,perday:$('#perday').value,sdays:$('#sdays').value,start:$('#start').value,ret:$('#ret').checked}}
+function tripPayload(){return{sel,car:$('#car').value,price:$('#price').value,perday:$('#perday').value,sdays:$('#sdays').value,start:$('#start').value,season:$('#season').value,ret:$('#ret').checked}}
 async function saveTrip(){
  if(!Auth.user){openLogin();return}
  if(!sel.length) return;
@@ -607,7 +655,7 @@ async function openTrips(){
 function loadTrip(i){
  const p=window._trips[i].payload||{};
  sel=(p.sel||[]).filter(id=>A.some(a=>a.id===id));
- [['car',p.car],['price',p.price],['perday',p.perday],['sdays',p.sdays],['start',p.start]].forEach(([id,v])=>{if(v!=null&&v!=='')$('#'+id).value=v});
+ [['car',p.car],['price',p.price],['perday',p.perday],['sdays',p.sdays],['start',p.start],['season',p.season]].forEach(([id,v])=>{if(v!=null&&v!=='')$('#'+id).value=v});
  $('#ret').checked=p.ret!==false;
  save();closeModal();render();toast('Аялал нээгдлээ');
  $('#planbox').scrollIntoView({behavior:'smooth'});
@@ -682,13 +730,13 @@ function printPlan(){
   const is4=$('#car').value==='13';
   return `<section class="pr-aimag"><h3>${a.n} аймаг <small>· Төв: ${a.c} · УБ-аас ${a.km} км</small></h3>
    <table class="pr-tbl"><tr><th>Үзэх газар</th><th>Зай</th><th>Машин</th><th>Улирал</th></tr>
-   ${a.p.map(x=>`<tr${!is4&&x[3]!=='car'?' class="dim"':''}><td><b>${x[0]}</b><br><small>${x[1]}</small></td><td>${x[2]}</td><td>${x[3]==='car'?'Суудлын':'4x4'}</td><td>${x[4]}</td></tr>`).join('')}</table>
+   ${a.p.map(x=>`<tr${(!is4&&x[3]!=='car')||!inSeason(x)?' class="dim"':''}><td><b>${x[0]}</b><br><small>${x[1]}</small></td><td>${x[2]}</td><td>${x[3]==='car'?'Суудлын':'4x4'}</td><td>${x[4]}</td></tr>`).join('')}</table>
    <p><b>Хоноглох:</b> ${a.camps.join('; ')}</p>
    <p><b>Зам:</b> ${a.road}</p>
    <p><b>Эмнэлэг:</b> ${a.c} — аймгийн Нэгдсэн эмнэлэг; сум бүрт сумын эрүүл мэндийн төв. <b>Цагдаа:</b> ${a.n} аймгийн Цагдаагийн газар.</p></section>`}).join('');
  $('#printArea').innerHTML=`
   <div class="pr-head"><div><h1>🏕️ Монгол аяллын хөтөлбөр</h1>
-   <div class="pr-route">${['Улаанбаатар',...route.map(a=>a.c+' ('+a.n+')'),...(ret?['Улаанбаатар']:[])].join(' → ')}</div></div>
+   <div class="pr-season">${SEASONS[curSeason()].i} ${SEASONS[curSeason()].n}ийн аялал</div><div class="pr-route">${['Улаанбаатар',...route.map(a=>a.c+' ('+a.n+')'),...(ret?['Улаанбаатар']:[])].join(' → ')}</div></div>
    <div class="pr-meta">${start?`Гарах өдөр: <b>${start}</b><br>`:''}Бэлтгэсэн: ${today}<br>by Dulguunsuvd Ganmyagmar</div></div>
   <div class="pr-stats"><div><b>${fmt(sum)} км</b>Нийт зай</div><div><b>~${Math.round(sum/60)} цаг</b>Жолоодлого</div><div><b>~${fmt(liters)} л · ${fmt(liters*price)}₮</b>Шатахуун (${carTxt.split('(')[0].trim()})</div><div><b>${plan.length} өдөр</b>Хөтөлбөр</div></div>
   <div class="pr-two">${svg?`<div class="pr-map">${svg.outerHTML}</div>`:''}
@@ -723,5 +771,5 @@ function renderFooter(){
 function render(){renderChips();const r=order();renderMap(r);renderSummary(r);renderPlan(r);renderDetails(r);renderAcct()}
 if(window.Auth) Auth.onChange(()=>{render();if(Auth.recovery)openNewPassword();if(wantTrial&&Auth.user&&Auth.ready){wantTrial=false;startTrial()}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
-['car','price','perday','ret','sdays','start'].forEach(id=>$('#'+id).addEventListener('input',render));
+['car','price','perday','ret','sdays','start','season'].forEach(id=>$('#'+id).addEventListener('input',render));
 render();renderFooter();

@@ -207,3 +207,15 @@ textarea.field{resize:vertical;font:15px Rubik,sans-serif}
 
 .trial-btn{margin-top:8px;border-color:var(--steppe);color:var(--steppe);background:#fff}
 .trial-box{background:var(--steppe2);border-radius:12px;padding:10px 12px;margin:0 0 10px;font-size:14px}
+
+/* ---- Улирал ---- */
+.season-box{border-radius:12px;padding:10px 12px;margin-top:10px;font-size:13.5px;background:#eef6ff;border-left:4px solid var(--sky)}
+.season-box.s-winter{background:#eef4fb;border-color:#5b8bd0}.season-box.s-spring{background:#eefaf1;border-color:#4caf6d}
+.season-box.s-summer{background:#fff6e5;border-color:#e0a21b}.season-box.s-autumn{background:#fdf0e6;border-color:#c96a2b}
+.season-h{font-size:14.5px}.season-box ul{margin:6px 0 0;padding-left:18px}.season-box li{margin-bottom:3px}
+.season-ev2{margin-top:4px}
+.season-ev{background:var(--sun2);border-radius:10px;padding:8px 12px;margin-bottom:10px;font-size:14px}
+.season-ev div+div{margin-top:4px}
+.place.off{opacity:.55;background:#f7f7f7}
+.off-tag{display:inline-block;font-size:12px;background:#e5e7eb;border-radius:6px;padding:1px 7px;margin-bottom:6px}
+@media print{.pr-season{font-size:12px;color:#d9731f;font-weight:600}}
