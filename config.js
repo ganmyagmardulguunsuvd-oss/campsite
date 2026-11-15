@@ -5,7 +5,7 @@ window.APP_CONFIG = {
   SUPABASE_ANON_KEY: 'sb_publishable_kqUPMlFntMjVHSAaWKDvQQ_FUsZ_rsx',
 
   // Премиум эрхийн үнэ, хугацаа
-  PREMIUM_PRICE: 9900,     // ₮
+  PREMIUM_PRICE: 4900,     // ₮
   PREMIUM_DAYS: 30,        // нэг удаа төлөхөд хэдэн хоног нээгдэх
 
   // Төлбөр хүлээн авах данс (хэрэглэгчдэд харагдана)
