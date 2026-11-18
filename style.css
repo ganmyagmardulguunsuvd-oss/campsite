@@ -362,3 +362,4 @@ textarea.field{resize:vertical;font:15px Rubik,sans-serif}
 @media print{.topnav,#view{display:none!important}}
 a.copy{text-decoration:none;color:var(--ink);display:inline-block}
 [id]{scroll-margin-top:64px}
+.chip.start{background:#fdecea;border-color:#c0392b;color:#c0392b;cursor:default}

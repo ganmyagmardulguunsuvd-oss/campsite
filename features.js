@@ -71,7 +71,7 @@ function wxWarn(mx, mn, pr, wd, code) {
   return w;
 }
 function dayPlace(d) {
-  if (d.type === 'home') return UB;
+  if (d.type === 'home') return START;
   return A.find(a => a.c === d.sleepAt) || (d.sleepAt === 'Улаанбаатар' ? UB : null);
 }
 async function wxFillPlan() {

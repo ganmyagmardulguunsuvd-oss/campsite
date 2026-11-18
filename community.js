@@ -391,7 +391,8 @@ function useStoryRoute() {
   const p = (window._story && window._story.route) || {};
   sel = (p.sel || []).filter(id => A.some(a => a.id === id));
   [['car', p.car], ['perday', p.perday], ['sdays', p.sdays], ['season', p.season]].forEach(([id, v]) => { if (v != null && v !== '') $('#' + id).value = v });
-  $('#ret').checked = p.ret !== false; save(); location.hash = ''; render();
+  $('#ret').checked = p.ret !== false; if (p.from) { setStart(p.from); if ($('#from')) $('#from').value = START === UB ? 'ub' : START.id }
+  sel = sel.filter(id => START === UB || id !== START.id); save(); location.hash = ''; render();
   setTimeout(() => $('#planbox').scrollIntoView({ behavior: 'smooth' }), 120); toast('🗺️ Маршрут нээгдлээ');
 }
 async function toggleLike(id) {

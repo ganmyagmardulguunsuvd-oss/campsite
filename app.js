@@ -151,28 +151,54 @@ try{sel=JSON.parse(localStorage.getItem('mn_trip_sel')||'[]').filter(id=>A.some(
 const tabState={};
 const $=s=>document.querySelector(s);
 const byId=id=>A.find(a=>a.id===id);
+// Аялал эхлэх цэг: Улаанбаатар эсвэл аль нэг аймгийн төв
+let START=UB;
+function setStart(id){START=(!id||id==='ub')?UB:(byId(id)||UB);try{localStorage.setItem('mn_trip_from',START===UB?'ub':START.id)}catch(e){}}
+try{setStart(localStorage.getItem('mn_trip_from'))}catch(e){}
+const fromKm=a=>START===UB?a.km:road(START,a);
+const startName=()=>START===UB?'Улаанбаатар':START.c;
 const gm=q=>'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(q);
 const fmt=n=>Math.round(n).toLocaleString('en-US').replace(/,/g,' ');
 
 function hav(a,b){const R=6371,t=Math.PI/180;const dLa=(b.lat-a.lat)*t,dLo=(b.lng-a.lng)*t;
  const x=Math.sin(dLa/2)**2+Math.cos(a.lat*t)*Math.cos(b.lat*t)*Math.sin(dLo/2)**2;return 2*R*Math.asin(Math.sqrt(x))}
-function road(a,b){ if(a===UB) return b.km; if(b===UB) return a.km; return Math.round(hav(a,b)*1.3/10)*10 }
+function road(a,b){ if(a===b) return 0; if(a===UB) return b.km; if(b===UB) return a.km; return Math.round(hav(a,b)*1.3/10)*10 }
 
 function renderChips(){
  $('#regions').innerHTML=REGIONS.map(r=>`<div class="region"><h3>${r}</h3><div class="chips">${
-  A.filter(a=>a.reg===r).sort((x,y)=>x.km-y.km).map(a=>`<button class="chip ${sel.includes(a.id)?'on':''}" onclick="toggle('${a.id}')">${a.n} <small>${a.km} км</small></button>`).join('')
+  A.filter(a=>a.reg===r).sort((x,y)=>fromKm(x)-fromKm(y)).map(a=>a===START?`<button class="chip start" onclick="toggle('${a.id}')" title="Аялал эндээс эхэлнэ">🏠 ${a.n} <small>гарах цэг</small></button>`:`<button class="chip ${sel.includes(a.id)?'on':''}" onclick="toggle('${a.id}')">${a.n} <small>${fmt(fromKm(a))} км</small></button>`).join('')
  }</div></div>`).join('');
 }
-function toggle(id){ sel=sel.includes(id)?sel.filter(x=>x!==id):[...sel,id]; save(); render() }
+function toggle(id){ if(START!==UB&&id===START.id){toast('🏠 '+START.n+' бол таны гарах цэг. «Хаанаас гарах»-аас сольж болно');return} sel=sel.includes(id)?sel.filter(x=>x!==id):[...sel,id]; save(); render() }
+function renderFrom(){
+ const el=$('#from'); if(!el) return;
+ el.innerHTML='<option value="ub">🏙️ Улаанбаатар</option>'+REGIONS.map(r=>`<optgroup label="${r}">${A.filter(a=>a.reg===r).map(a=>`<option value="${a.id}">${a.c} (${a.n})</option>`).join('')}</optgroup>`).join('')+'<option value="gps">📍 Миний байршлаас</option>';
+ el.value=START===UB?'ub':START.id;
+}
+function onFromChange(v){
+ if(v==='gps'){
+  const el=$('#from'); el.value=START===UB?'ub':START.id;
+  if(!navigator.geolocation){toast('Байршил тогтоох боломжгүй');return}
+  toast('📍 Байршил тогтоож байна…');
+  navigator.geolocation.getCurrentPosition(pos=>{
+   const me={lat:pos.coords.latitude,lng:pos.coords.longitude};
+   let best=UB,bd=hav(me,UB); A.forEach(a=>{const d=hav(me,a);if(d<bd){bd=d;best=a}});
+   onFromChange(best===UB?'ub':best.id); $('#from').value=best===UB?'ub':best.id;
+   toast(`📍 Ойрын төв: ${best===UB?'Улаанбаатар':best.c+' ('+best.n+')'} — ~${Math.round(bd)} км`);
+  },()=>toast('Байршил олдсонгүй'),{timeout:15000,maximumAge:300000});
+  return;
+ }
+ setStart(v); if(START!==UB) sel=sel.filter(id=>id!==START.id); save(); render();
+}
 function clearSel(){ sel=[]; save(); render() }
 function save(){ try{localStorage.setItem('mn_trip_sel',JSON.stringify(sel))}catch(e){} }
 
 function order(){
  // ойрын хөршийн аргаар дараалал гаргана, дараа нь 2-opt-оор сайжруулна
- let rest=sel.map(byId), cur=UB, out=[];
+ let rest=sel.map(byId).filter(a=>a&&a!==START), cur=START, out=[];
  while(rest.length){ rest.sort((x,y)=>road(cur,x)-road(cur,y)); cur=rest.shift(); out.push(cur) }
  const ret=$('#ret').checked;
- const total=r=>{let s=0,p=UB;r.forEach(x=>{s+=road(p,x);p=x}); if(ret) s+=road(p,UB); return s};
+ const total=r=>{let s=0,p=START;r.forEach(x=>{s+=road(p,x);p=x}); if(ret) s+=road(p,START); return s};
  let improved=true;
  while(improved&&out.length>2){improved=false;
   for(let i=0;i<out.length-1;i++)for(let j=i+1;j<out.length;j++){
@@ -189,19 +215,20 @@ const BORDER=[[87.75,49.17],[88.8,49.5],[90.7,50.3],[92.2,50.8],[94.25,50.48],[9
 function renderMap(route){
  const ret=$('#ret').checked;
  const border=BORDER.map(([lng,lat])=>px({lng,lat}).map(v=>v.toFixed(1)).join(',')).join(' ');
- let pts=[UB,...route]; if(ret&&route.length) pts.push(UB);
+ let pts=[START,...route]; if(ret&&route.length) pts.push(START);
  const line=route.length?`<polyline points="${pts.map(p=>px(p).join(',')).join(' ')}" fill="none" stroke="#d9731f" stroke-width="3.5" stroke-linejoin="round" stroke-dasharray="${ret?'':'0'}" opacity=".9"/>`:'';
- const dots=A.map(a=>{const [x,y]=px(a);const i=route.indexOf(a);const on=i>=0;
+ const dots=A.filter(a=>a!==START).map(a=>{const [x,y]=px(a);const i=route.indexOf(a);const on=i>=0;
   return `<g style="cursor:pointer" onclick="toggle('${a.id}')"><title>${a.n} — ${a.c}</title>
    <circle cx="${x}" cy="${y}" r="${on?13:6}" fill="${on?'#d9731f':'#1d4e89'}" stroke="#fff" stroke-width="2"/>
    ${on?`<text x="${x}" y="${y+4.5}" text-anchor="middle" font-size="12" font-weight="600" fill="#fff">${i+1}</text>`:''}
    <text x="${x}" y="${y+(on?27:18)}" text-anchor="middle" font-size="${on?15:13}" font-weight="${on?600:400}" fill="${on?'#9a4a0b':'#374151'}" paint-order="stroke" stroke="#fffdf8" stroke-width="3">${a.n}</text></g>`}).join('');
- const [ux,uy]=px(UB);
+ const [ux,uy]=px(START), [bx,by]=px(UB);
  $('#svgbox').innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Монголын газрын зураг">
   <polygon points="${border}" fill="#efe4cc" stroke="#c9b48a" stroke-width="2"/>
   ${line}${dots}
-  <g><rect x="${ux-9}" y="${uy-9}" width="18" height="18" rx="4" fill="#c0392b" stroke="#fff" stroke-width="2"/>
-  <text x="${ux}" y="${uy-14}" text-anchor="middle" font-size="12.5" font-weight="700" fill="#c0392b" paint-order="stroke" stroke="#fffdf8" stroke-width="3">Улаанбаатар</text></g>
+  ${START!==UB?`<g><rect x="${bx-5}" y="${by-5}" width="10" height="10" rx="2" fill="#6b7280" stroke="#fff" stroke-width="1.5"/><text x="${bx}" y="${by-9}" text-anchor="middle" font-size="11" fill="#6b7280" paint-order="stroke" stroke="#fffdf8" stroke-width="3">УБ</text></g>`:''}
+  <g><title>Гарах цэг</title><rect x="${ux-9}" y="${uy-9}" width="18" height="18" rx="4" fill="#c0392b" stroke="#fff" stroke-width="2"/>
+  <text x="${ux}" y="${uy-14}" text-anchor="middle" font-size="12.5" font-weight="700" fill="#c0392b" paint-order="stroke" stroke="#fffdf8" stroke-width="3">${startName()}</text></g>
  </svg><p class="note">Цэг дээр дарж аймаг нэмж/хасч болно. Зураг схемчилсэн.</p>`;
 }
 
@@ -216,9 +243,9 @@ function seasonBlock(route){
 function renderSummary(route){
  if(!route.length){$('#summary').innerHTML='<div class="empty">Дээрээс аймгаа сонгоход маршрут, зай, шатахууны зардал энд гарна.</div>';return}
  const ret=$('#ret').checked, L=+$('#car').value, price=+$('#price').value||0, perday=+$('#perday').value||400;
- let legs=[],p=UB,sum=0;
+ let legs=[],p=START,sum=0;
  route.forEach(a=>{const d=road(p,a);legs.push([p,a,d]);sum+=d;p=a});
- if(ret){const d=road(p,UB);legs.push([p,UB,d]);sum+=d}
+ if(ret){const d=road(p,START);legs.push([p,START,d]);sum+=d}
  const liters=sum*L/100, cost=liters*price, hours=sum/60;
  const days=buildPlan(route).length;
  const need4=route.filter(a=>a.p.some(x=>x[3]==='4x4'));
@@ -233,7 +260,7 @@ function renderSummary(route){
   ${window.roadWarnHtml?roadWarnHtml(route):''}
   ${seasonBlock(route)}
   ${need4.length?`<div class="warn">🚙 <b>${need4.map(a=>a.n).join(', ')}</b>-ийн зарим газар руу шороон, хүнд зам байна. Тэдгээрийг үзэх бол 4x4 машин, нөөц дугуй, шатахуунтай яваарай.</div>`:''}
-  ${route.some(a=>a.km>900)?`<div class="warn">🛣️ Баруун аймгууд руу УБ-аас 2–3 өдөр явдаг. Хугацаа бага бол нэг тийш нь онгоцоор нисэх боломжийг харгалзаарай.</div>`:''}
+  ${route.some(a=>fromKm(a)>900)?`<div class="warn">🛣️ Алс аймаг руу ${startName()}-аас 2–3 өдөр явна. Хугацаа бага бол нэг тийш нь онгоцоор нисэх боломжийг харгалзаарай.</div>`:''}
   <p class="note">Аймаг хоорондын зай нь ойролцоо тооцоо. Шатахууны үнэ, машины зарцуулалтыг дээрээс өөрчилж болно.</p>`;
 }
 
@@ -358,8 +385,8 @@ const SEASON_TIPS={
 
 function buildPlan(route){
  const perday=+$('#perday').value||400, is4=$('#car').value==='13', ret=$('#ret').checked, sd=$('#sdays').value;
- const days=[]; let prev=UB;
- const stops=[...route]; if(ret&&route.length) stops.push(UB);
+ const days=[]; let prev=START;
+ const stops=[...route]; if(ret&&route.length) stops.push(START);
  stops.forEach(s=>{
   const d=road(prev,s);
   const n=d<=perday*1.25?1:Math.ceil(d/perday);
@@ -383,11 +410,11 @@ function buildPlan(route){
    const items=[[8,`Хөдлөх: <b>${from}</b>. Гарахаасаа өмнө шатахуун дүүргэх`],
                 [seg/60>4.5?12.5:8+seg/120,'Замдаа өдрийн хоол, амралт'],
                 [arr,`Хүрэх: <b>${to}</b>`]];
-   days.push({type:s===UB&&last?'home':'drive',title:`${from} → ${to}`,km:seg,items,
+   days.push({type:s===START&&last?'home':'drive',title:`${from} → ${to}`,km:seg,items,
      sleepAt:last?nm(s):(mid?mid.c:'Замын дагуух сумын төв'),
-     sleep:last?(s===UB?'Гэртээ 🏠':`${s.c} хотын зочид буудал эсвэл ойрын кемп`):(mid?`${lab(mid)} хотын зочид буудал`:'Замын дагуух сумын төвийн буудал')});
+     sleep:last?(s===START?'Гэртээ 🏠':`${s.c} хотын зочид буудал эсвэл ойрын кемп`):(mid?`${lab(mid)} хотын зочид буудал`:'Замын дагуух сумын төвийн буудал')});
   }
-  if(s!==UB){
+  if(s!==START){
    const se=curSeason();
    const ok=s.p.filter(p=>(is4||p[3]==='car')&&inSeason(p,se)), skipped=is4?[]:s.p.filter(p=>p[3]!=='car'&&inSeason(p,se)), offSeason=s.p.filter(p=>!inSeason(p,se));
    let nd=sd==='auto'?(ok.length>=4?2:1)+(s.km>900?1:0):+sd;
@@ -716,7 +743,7 @@ async function checkStatus(){
  toast('Одоогоор шалгагдаж байна');
 }
 
-function tripPayload(){return{sel,car:$('#car').value,price:$('#price').value,perday:$('#perday').value,sdays:$('#sdays').value,start:$('#start').value,season:$('#season').value,fuel:$('#fuel')?$('#fuel').value:'',ret:$('#ret').checked}}
+function tripPayload(){return{from:START===UB?'ub':START.id,sel,car:$('#car').value,price:$('#price').value,perday:$('#perday').value,sdays:$('#sdays').value,start:$('#start').value,season:$('#season').value,fuel:$('#fuel')?$('#fuel').value:'',ret:$('#ret').checked}}
 async function saveTrip(){
  if(!Auth.user){openLogin();return}
  if(!sel.length) return;
@@ -737,6 +764,7 @@ function loadTrip(i){
  sel=(p.sel||[]).filter(id=>A.some(a=>a.id===id));
  [['car',p.car],['price',p.price],['perday',p.perday],['sdays',p.sdays],['start',p.start],['season',p.season],['fuel',p.fuel]].forEach(([id,v])=>{if(v!=null&&v!=='')$('#'+id).value=v});
  $('#ret').checked=p.ret!==false;
+ setStart(p.from||'ub'); if($('#from'))$('#from').value=START===UB?'ub':START.id;
  save();closeModal();render();toast('Аялал нээгдлээ');
  $('#planbox').scrollIntoView({behavior:'smooth'});
 }
@@ -802,7 +830,7 @@ function printPlan(){
  const route=order(); if(!route.length) return;
  if(!isPro()){openPremium();return}
  const plan=buildPlan(route), ret=$('#ret').checked, L=+$('#car').value, price=+$('#price').value||0;
- let p=UB,sum=0,legs=[]; route.forEach(a=>{const d=road(p,a);legs.push([p,a,d]);sum+=d;p=a}); if(ret){const d=road(p,UB);legs.push([p,UB,d]);sum+=d}
+ let p=START,sum=0,legs=[]; route.forEach(a=>{const d=road(p,a);legs.push([p,a,d]);sum+=d;p=a}); if(ret){const d=road(p,START);legs.push([p,START,d]);sum+=d}
  const liters=sum*L/100, carTxt=$('#car').selectedOptions[0].textContent;
  const start=$('#start').value, today=new Date().toLocaleDateString();
  const svg=$('#svgbox svg'); 
@@ -816,7 +844,7 @@ function printPlan(){
    <p><b>Эмнэлэг:</b> ${a.c} — аймгийн Нэгдсэн эмнэлэг; сум бүрт сумын эрүүл мэндийн төв. <b>Цагдаа:</b> ${a.n} аймгийн Цагдаагийн газар.</p></section>`}).join('');
  $('#printArea').innerHTML=`
   <div class="pr-head"><div><h1>🏕️ Монгол аяллын хөтөлбөр</h1>
-   <div class="pr-season">${SEASONS[curSeason()].i} ${SEASONS[curSeason()].n}ийн аялал</div><div class="pr-route">${['Улаанбаатар',...route.map(a=>a.c+' ('+a.n+')'),...(ret?['Улаанбаатар']:[])].join(' → ')}</div></div>
+   <div class="pr-season">${SEASONS[curSeason()].i} ${SEASONS[curSeason()].n}ийн аялал</div><div class="pr-route">${[startName(),...route.map(a=>a.c+' ('+a.n+')'),...(ret?[startName()]:[])].join(' → ')}</div></div>
    <div class="pr-meta">${start?`Гарах өдөр: <b>${start}</b><br>`:''}Бэлтгэсэн: ${today}<br>by Dulguunsuvd Ganmyagmar</div></div>
   <div class="pr-stats"><div><b>${fmt(sum)} км</b>Нийт зай</div><div><b>~${Math.round(sum/60)} цаг</b>Жолоодлого</div><div><b>~${fmt(liters)} л · ${fmt(liters*price)}₮</b>Шатахуун (${carTxt.split('(')[0].trim()})</div><div><b>${plan.length} өдөр</b>Хөтөлбөр</div></div>
   <div class="pr-two">${svg?`<div class="pr-map">${svg.outerHTML}</div>`:''}
@@ -853,4 +881,4 @@ function render(){renderChips();const r=order();renderMap(r);renderSummary(r);re
 if(window.Auth) Auth.onChange(()=>{render();if(Auth.recovery&&!window._resetFlow)openNewPassword();if(wantTrial&&Auth.user&&Auth.ready){wantTrial=false;startTrial()}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
 ['car','price','perday','ret','sdays','start','season'].forEach(id=>$('#'+id).addEventListener('input',render));
-render();renderFooter();
+renderFrom();render();renderFooter();

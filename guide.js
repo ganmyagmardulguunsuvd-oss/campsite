@@ -60,21 +60,21 @@ function aimagFit(a, p) {
   cats.forEach(c => { s += (CATS[c].w[a.id] || 0) * (p.cats.length ? 1 : 0.35) });
   s += Math.min(good.length, 4) * 0.35;
   if (!good.length) s -= 3;
-  if (p.car === 'none' && !(a.rail || a.air) && a.km > 500) s -= 2;
-  if (p.kids && a.km > 700) s -= 1;
+  if (p.car === 'none' && !(a.rail || a.air) && fromKm(a) > 500) s -= 2;
+  if (p.kids && fromKm(a) > 700) s -= 1;
   if (eventsFor(a, se).some(e => e.a !== '*')) s += 0.8;
   if (p.must && p.must.includes(a.id)) s += 6;
   return { s, good };
 }
 function tripOf(ids, p) {
   const perday = +($('#perday') && $('#perday').value) || 400, ret = true;
-  let rest = ids.map(byId), cur = UB, out = [];
+  let rest = ids.map(byId), cur = START, out = [];
   while (rest.length) { rest.sort((x, y) => road(cur, x) - road(cur, y)); cur = rest.shift(); out.push(cur) }
-  let km = 0, drive = 0, prev = UB;
-  const legs = [...out, ...(ret ? [UB] : [])];
+  let km = 0, drive = 0, prev = START;
+  const legs = [...out, ...(ret ? [START] : [])];
   legs.forEach(x => { const d = road(prev, x); km += d; drive += d <= perday * 1.25 ? 1 : Math.ceil(d / perday); prev = x });
   // Ойр аймгийн буцах замыг үзэх өдрийн оройд багтаана
-  if (out.length === 1 && out[0].km <= 250) drive -= 1;
+  if (out.length === 1 && fromKm(out[0]) <= 250) drive -= 1;
   const fits = out.map(a => aimagFit(a, p));
   const sMin = out.length, sMax = fits.reduce((n, f) => n + (f.good.length >= 4 ? 2 : 1), 0);
   let sight = sMax;
@@ -82,7 +82,7 @@ function tripOf(ids, p) {
   return { route: out, km, drive, days: Math.max(1, drive + sight), fits, sd: sight === sMin ? '1' : 'auto' };
 }
 function suggest(p, n = 3) {
-  const pool = A.filter(a => !p.region || a.reg === p.region || (p.must || []).includes(a.id));
+  const pool = A.filter(a => a !== START && (!p.region || a.reg === p.region || (p.must || []).includes(a.id)));
   const base = Object.fromEntries(pool.map(a => [a.id, aimagFit(a, p).s]));
   const top = pool.slice().sort((x, y) => base[y.id] - base[x.id]).slice(0, 12).map(a => a.id);
   (p.must || []).forEach(id => { if (!top.includes(id)) top.push(id) });

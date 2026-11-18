@@ -19,7 +19,7 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=202611181100">
+<link rel="stylesheet" href="style.css?v=202611181115">
 </head>
 <body>
 <header>
@@ -50,6 +50,9 @@
   <a class="guide-cta" href="#guide">🎯 Хаашаа явахаа мэдэхгүй байна уу? <b>Зургаар сонгоод санал аваарай →</b></a>
   <div class="regions" id="regions"></div>
   <div class="opts">
+    <label>Хаанаас гарах
+      <select id="from" onchange="onFromChange(this.value)"></select>
+    </label>
     <label>Машины төрөл
       <select id="car">
         <option value="6">Суудлын (хайбрид, ~6 л/100км)</option>
@@ -87,7 +90,7 @@
     <label>Гарах өдөр
       <input type="date" id="start" style="font:15px Rubik,sans-serif;padding:7px 10px;border:1.5px solid var(--line);border-radius:10px;background:#fff">
     </label>
-    <label class="check"><input type="checkbox" id="ret" checked> Улаанбаатар руу буцна</label>
+    <label class="check"><input type="checkbox" id="ret" checked> Гарсан газартаа буцна</label>
     <button class="btn ghost" onclick="clearSel()">Цэвэрлэх</button>
   </div>
 </section>
@@ -215,12 +218,12 @@
 </footer>
 <button class="fb-btn" onclick="openFeedback()" aria-label="Санал хүсэлт">💬 <span>Санал хүсэлт</span></button>
 
-<script src="config.js?v=202611181100"></script>
+<script src="config.js?v=202611181115"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="auth.js?v=202611181100"></script>
-<script src="app.js?v=202611181100"></script>
-<script src="features.js?v=202611181100"></script>
-<script src="guide.js?v=202611181100"></script>
-<script src="community.js?v=202611181100"></script>
+<script src="auth.js?v=202611181115"></script>
+<script src="app.js?v=202611181115"></script>
+<script src="features.js?v=202611181115"></script>
+<script src="guide.js?v=202611181115"></script>
+<script src="community.js?v=202611181115"></script>
 </body>
 </html>
