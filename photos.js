@@ -7,13 +7,13 @@ const CM_Q = {
   darkhan: ['Darkhan Mongolia city', 'Darkhan-Uul landscape'], orkhon: ['Erdenet Mongolia', 'Orkhon Province landscape'],
   bulgan: ['Khögnö Khan', 'Elsen Tasarkhai', 'Bulgan Province landscape'], uvurkhangai: ['Orkhon Valley', 'Erdene Zuu', 'Övörkhangai landscape'],
   arkhangai: ['Arkhangai landscape', 'Terkhiin Tsagaan Lake'], khuvsgul: ['Lake Khövsgöl', 'Khövsgöl Province landscape'],
-  zavkhan: ['Otgontenger', 'Zavkhan landscape', 'Uliastai'], govialtai: ['Govi-Altai Province landscape', 'Sutai mountain', 'Govi-Altai'],
+  zavkhan: ['Otgontenger', 'Zavkhan landscape', 'Uliastai'], govialtai: ['Govi-Altai Mongolia landscape', 'Eej Khairkhan', 'Taishir Mongolia', 'Altai Govi-Altai Mongolia'],
   uvs: ['Uvs Lake', 'Khyargas Lake', 'Uvs Province landscape'], khovd: ['Khovd Province', 'Khar-Us Lake'],
   bayanulgii: ['Tavan Bogd', 'Bayan-Ölgii Province', 'Ölgii'], bayankhongor: ['Bayankhongor Province', 'Orog Lake'],
   umnugovi: ['Ömnögovi landscape', 'Khongoryn Els', 'Yolyn Am'], dundgovi: ['Baga Gazriin Chuluu', 'Tsagaan Suvarga', 'Dundgovi Province'],
-  dornogovi: ['Dornogovi Province', 'Khamar Monastery', 'Sainshand'], govisumber: ['Choir Mongolia', 'Govisümber landscape'],
-  khentii: ['Khentii Mountains', 'Khentii Province landscape', 'Onon River'], sukhbaatar: ['Shiliin Bogd', 'Dariganga', 'Sükhbaatar Province steppe'],
-  dornod: ['Buir Lake', 'Kherlen River', 'Dornod landscape']
+  dornogovi: ['Dornogovi Province', 'Khamar Monastery', 'Sainshand'], govisumber: ['Choir Mongolia landscape', 'Govisümber Mongolia', 'Choir Mongolia'],
+  khentii: ['Khentii Mountains', 'Khentii Province landscape', 'Onon River'], sukhbaatar: ['Shiliin Bogd', 'Dariganga Mongolia', 'Sükhbaatar Province Mongolia', 'Baruun-Urt'],
+  dornod: ['Buir Lake Mongolia', 'Kherlen River Mongolia', 'Dornod Mongolia landscape', 'Choibalsan Mongolia']
 };
 const CM = {};
 const stripHtml = h => String(h || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
@@ -24,13 +24,13 @@ async function cmSearch(q) {
   return Object.values((j.query && j.query.pages) || {}).sort((a, b) => a.index - b.index).map(p => {
     const ii = p.imageinfo && p.imageinfo[0]; if (!ii) return null;
     const m = ii.extmetadata || {}, t = p.title.replace(/^File:/, '');
-    if (/map|flag|coat|logo|seal|svg|locator|diagram|stamp|banknote|plan\b|earring|necklace|knife|jewel|museum|artifact|bronze|gold|coin|mig-|aircraft|locomotive|train|bank|power plant|thermal|spanworm|moth|laudakia|lizard|insect|beetle|spider|banner|portrait|school|hospital|office|suburb|smile|statue|sign\b|bus\b|car\b|truck|lada|uaz/i.test(t) || ii.width < 900 || ii.width < ii.height * 0.9) return null;
+    if (/map|flag|coat|logo|seal|svg|locator|diagram|stamp|banknote|plan\b|earring|necklace|knife|jewel|museum|artifact|bronze|gold|coin|mig-|aircraft|locomotive|train|bank|power plant|thermal|spanworm|moth|laudakia|lizard|insect|beetle|spider|banner|portrait|school|hospital|office|suburb|smile|statue|sign\b|bus\b|car\b|truck|lada|uaz|dagger|squirrel|mouse|choir\b(?! mongolia)|cathedral|kern|marathon|volga|gaz-|hotel|graffiti|fluorite|quartz|mineral|boards|railway/i.test(t) || /^[A-Z][a-z]+ [a-z]{3,}(us|is|ii|ae|um|a|i|or|ensis)\b/.test(t) || ii.width < 900 || ii.width < ii.height * 0.9) return null;
     return { src: ii.thumburl, full: ii.url, page: ii.descriptionurl, by: stripHtml(m.Artist && m.Artist.value).slice(0, 50) || 'Wikimedia Commons', lic: stripHtml(m.LicenseShortName && m.LicenseShortName.value) || 'Commons', title: t };
   }).filter(Boolean);
 }
 function commonsPhotos(aid) {
   if (CM[aid]) return CM[aid];
-  try { const c = JSON.parse(localStorage.getItem('cs_cm2_' + aid) || 'null'); if (c && Date.now() - c.t < 7 * 864e5) return CM[aid] = Promise.resolve(c.p) } catch (e) { }
+  try { const c = JSON.parse(localStorage.getItem('cs_cm3_' + aid) || 'null'); if (c && Date.now() - c.t < 7 * 864e5) return CM[aid] = Promise.resolve(c.p) } catch (e) { }
   return CM[aid] = (async () => {
     let out = [];
     for (const q of CM_Q[aid] || []) {
@@ -38,7 +38,7 @@ function commonsPhotos(aid) {
       if (out.length >= 8) break;
     }
     out = out.slice(0, 8);
-    try { localStorage.setItem('cs_cm2_' + aid, JSON.stringify({ t: Date.now(), p: out })) } catch (e) { }
+    try { localStorage.setItem('cs_cm3_' + aid, JSON.stringify({ t: Date.now(), p: out })) } catch (e) { }
     return out;
   })();
 }
