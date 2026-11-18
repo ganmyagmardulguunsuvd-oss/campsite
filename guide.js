@@ -23,7 +23,7 @@ const CATS = {
 // Зургууд: Wikimedia Commons-ийн чөлөөт лицензтэй зураг. Зохиогч, лицензийг Commons-оос шууд татаж дор нь заана.
 // Зураг ачаалагдахгүй бол дүрс (emoji) харагдана. Дараа нь өөрсдийн зургаар солиход src-г шууд бичиж болно.
 const CAT_FILES = {
-  forest: 'Forest, Terelj National Park.jpg', lake: 'Lake Khövsgöl, Mongolia.jpg', desert: 'Khongoryn Els sand dunes.jpg',
+  forest: 'HuvsgulAutumn.jpg', lake: 'Lake Khövsgöl, Mongolia.jpg', desert: 'Khongoryn Els sand dunes.jpg',
   steppe: 'Nomadic herders of Mongolia (25156748707).jpg', snow: 'Tavan Bogd Mountains.jpg', history: 'Holy wall (48984667297).jpg',
   hotspring: 'Shagrljuut hot spring resort of Mongolia.jpg', nomad: 'Kazakh Eagle Hunter with Golden Eagle in Bayan Olgii region, Mongolia.jpg'
 };
@@ -31,7 +31,7 @@ const CAT_PHOTO = {};
 let catPhotoLoading = null;
 function loadCatPhotos() {
   if (catPhotoLoading) return catPhotoLoading;
-  try { const c = JSON.parse(localStorage.getItem('cs_cat_photos') || 'null'); if (c && Date.now() - c.t < 7 * 864e5) { Object.assign(CAT_PHOTO, c.p); return catPhotoLoading = Promise.resolve() } } catch (e) { }
+  try { const c = JSON.parse(localStorage.getItem('cs_cat_photos2') || 'null'); if (c && Date.now() - c.t < 7 * 864e5) { Object.assign(CAT_PHOTO, c.p); return catPhotoLoading = Promise.resolve() } } catch (e) { }
   const strip = h => String(h || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
   const url = 'https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=640&titles=' +
     encodeURIComponent(Object.values(CAT_FILES).map(f => 'File:' + f).join('|'));
@@ -44,7 +44,7 @@ function loadCatPhotos() {
       const m = ii.extmetadata || {};
       CAT_PHOTO[c] = { src: ii.thumburl || ii.url, page: ii.descriptionurl, by: strip(m.Artist && m.Artist.value).slice(0, 60) || 'Wikimedia Commons', lic: strip(m.LicenseShortName && m.LicenseShortName.value) || 'Commons' };
     });
-    try { localStorage.setItem('cs_cat_photos', JSON.stringify({ t: Date.now(), p: CAT_PHOTO })) } catch (e) { }
+    try { localStorage.setItem('cs_cat_photos2', JSON.stringify({ t: Date.now(), p: CAT_PHOTO })) } catch (e) { }
   }).catch(e => console.warn('photos', e));
 }
 const QUIZ_STEPS = [['forest', 'lake', 'desert', 'steppe', 'snow'], ['history', 'hotspring', 'nomad']];
