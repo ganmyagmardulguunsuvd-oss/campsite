@@ -3,17 +3,17 @@
 
 // ---------- Commons: аймаг бүрт хайх үгс (эхнийх нь хангалттай олдохгүй бол дараагийнхыг) ----------
 const CM_Q = {
-  tov: ['Gorkhi-Terelj National Park', 'Töv Province Mongolia'], selenge: ['Selenge Province', 'Amarbayasgalant Monastery'],
-  darkhan: ['Darkhan Mongolia', 'Darkhan-Uul'], orkhon: ['Erdenet Mongolia', 'Orkhon Province'],
-  bulgan: ['Bulgan Province Mongolia', 'Khögnö Khan', 'Elsen Tasarkhai'], uvurkhangai: ['Orkhon Valley', 'Övörkhangai landscape', 'Erdene Zuu'],
-  arkhangai: ['Arkhangai landscape', 'Terkhiin Tsagaan Lake'], khuvsgul: ['Lake Khövsgöl', 'Khövsgöl Province'],
-  zavkhan: ['Zavkhan Province', 'Otgontenger', 'Uliastai'], govialtai: ['Govi-Altai Province', 'Altai Mongolia'],
-  uvs: ['Uvs Province', 'Uvs Lake', 'Ulaangom'], khovd: ['Khovd Province', 'Khar-Us Lake'],
-  bayanulgii: ['Bayan-Ölgii Province', 'Tavan Bogd', 'Ölgii'], bayankhongor: ['Bayankhongor Province', 'Orog Lake'],
-  umnugovi: ['Ömnögovi landscape', 'Khongoryn Els', 'Yolyn Am'], dundgovi: ['Dundgovi Province', 'Baga Gazriin Chuluu', 'Tsagaan Suvarga'],
-  dornogovi: ['Dornogovi Province', 'Khamar Monastery', 'Sainshand'], govisumber: ['Govisümber', 'Choir Mongolia'],
-  khentii: ['Khentii Province', 'Khentii Mountains', 'Chinggis Khaan Mongolia city'], sukhbaatar: ['Sükhbaatar Province', 'Dariganga', 'Shiliin Bogd'],
-  dornod: ['Dornod Province', 'Buir Lake', 'Choibalsan']
+  tov: ['Gorkhi-Terelj National Park', 'Töv Province landscape'], selenge: ['Amarbayasgalant Monastery', 'Selenge River Mongolia', 'Selenge Province landscape'],
+  darkhan: ['Darkhan Mongolia city', 'Darkhan-Uul landscape'], orkhon: ['Erdenet Mongolia', 'Orkhon Province landscape'],
+  bulgan: ['Khögnö Khan', 'Elsen Tasarkhai', 'Bulgan Province landscape'], uvurkhangai: ['Orkhon Valley', 'Erdene Zuu', 'Övörkhangai landscape'],
+  arkhangai: ['Arkhangai landscape', 'Terkhiin Tsagaan Lake'], khuvsgul: ['Lake Khövsgöl', 'Khövsgöl Province landscape'],
+  zavkhan: ['Otgontenger', 'Zavkhan landscape', 'Uliastai'], govialtai: ['Govi-Altai Province landscape', 'Sutai mountain', 'Govi-Altai'],
+  uvs: ['Uvs Lake', 'Khyargas Lake', 'Uvs Province landscape'], khovd: ['Khovd Province', 'Khar-Us Lake'],
+  bayanulgii: ['Tavan Bogd', 'Bayan-Ölgii Province', 'Ölgii'], bayankhongor: ['Bayankhongor Province', 'Orog Lake'],
+  umnugovi: ['Ömnögovi landscape', 'Khongoryn Els', 'Yolyn Am'], dundgovi: ['Baga Gazriin Chuluu', 'Tsagaan Suvarga', 'Dundgovi Province'],
+  dornogovi: ['Dornogovi Province', 'Khamar Monastery', 'Sainshand'], govisumber: ['Choir Mongolia', 'Govisümber landscape'],
+  khentii: ['Khentii Mountains', 'Khentii Province landscape', 'Onon River'], sukhbaatar: ['Shiliin Bogd', 'Dariganga', 'Sükhbaatar Province steppe'],
+  dornod: ['Buir Lake', 'Kherlen River', 'Dornod landscape']
 };
 const CM = {};
 const stripHtml = h => String(h || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
@@ -24,13 +24,13 @@ async function cmSearch(q) {
   return Object.values((j.query && j.query.pages) || {}).sort((a, b) => a.index - b.index).map(p => {
     const ii = p.imageinfo && p.imageinfo[0]; if (!ii) return null;
     const m = ii.extmetadata || {}, t = p.title.replace(/^File:/, '');
-    if (/map|flag|coat|logo|seal|svg|locator|diagram|stamp|banknote|plan\b/i.test(t) || ii.width < 900 || ii.width < ii.height * 0.9) return null;
+    if (/map|flag|coat|logo|seal|svg|locator|diagram|stamp|banknote|plan\b|earring|necklace|knife|jewel|museum|artifact|bronze|gold|coin|mig-|aircraft|locomotive|train|bank|power plant|thermal|spanworm|moth|laudakia|lizard|insect|beetle|spider|banner|portrait|school|hospital|office|suburb|smile|statue|sign\b|bus\b|car\b|truck|lada|uaz/i.test(t) || ii.width < 900 || ii.width < ii.height * 0.9) return null;
     return { src: ii.thumburl, full: ii.url, page: ii.descriptionurl, by: stripHtml(m.Artist && m.Artist.value).slice(0, 50) || 'Wikimedia Commons', lic: stripHtml(m.LicenseShortName && m.LicenseShortName.value) || 'Commons', title: t };
   }).filter(Boolean);
 }
 function commonsPhotos(aid) {
   if (CM[aid]) return CM[aid];
-  try { const c = JSON.parse(localStorage.getItem('cs_cm_' + aid) || 'null'); if (c && Date.now() - c.t < 7 * 864e5) return CM[aid] = Promise.resolve(c.p) } catch (e) { }
+  try { const c = JSON.parse(localStorage.getItem('cs_cm2_' + aid) || 'null'); if (c && Date.now() - c.t < 7 * 864e5) return CM[aid] = Promise.resolve(c.p) } catch (e) { }
   return CM[aid] = (async () => {
     let out = [];
     for (const q of CM_Q[aid] || []) {
@@ -38,7 +38,7 @@ function commonsPhotos(aid) {
       if (out.length >= 8) break;
     }
     out = out.slice(0, 8);
-    try { localStorage.setItem('cs_cm_' + aid, JSON.stringify({ t: Date.now(), p: out })) } catch (e) { }
+    try { localStorage.setItem('cs_cm2_' + aid, JSON.stringify({ t: Date.now(), p: out })) } catch (e) { }
     return out;
   })();
 }
