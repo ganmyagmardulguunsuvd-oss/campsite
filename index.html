@@ -19,7 +19,7 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=202611180913">
+<link rel="stylesheet" href="style.css?v=202611181030">
 </head>
 <body>
 <header>
@@ -30,6 +30,9 @@
     <p>21 аймгаас нэг эсвэл хэдийг сонгоход маршрут, үзэсгэлэнт газар, амралтын бааз, дэлгүүр, шатахуун, эмнэлэг, цагдаа, машин унааны мэдээллийг нэг дор гаргана.</p>
   </div>
 </header>
+<nav class="topnav"><div class="wrap">
+  <a href="#">🗺️ Төлөвлөгч</a><a href="#guide">🎯 Хаашаа явах вэ?</a><a href="#helper">💬 Туслах</a><a href="#stories">📖 Аяллын түүх</a><a href="#camps">🏕️ Кемпүүд</a><a href="#roads">🚧 Замын мэдээ</a>
+</div></nav>
 
 <div class="modal" id="modal" onclick="if(event.target===this)closeModal()">
   <div class="modal-box"><button class="modal-x" onclick="closeModal()" aria-label="Хаах">×</button><div id="modalBody"></div></div>
@@ -39,10 +42,12 @@
 
 <button class="sos-btn" onclick="goSOS()">🆘 Яаралтай тусламж</button>
 
-<main class="wrap">
+<main class="wrap" id="view" hidden></main>
+<main class="wrap" id="planner">
 
 <section class="card">
   <h2><span class="num">1</span> Очих аймгаа сонгоно уу <small style="font-weight:400;color:var(--muted);font-size:14px">(1 эсвэл 2–3 аймаг)</small></h2>
+  <a class="guide-cta" href="#guide">🎯 Хаашаа явахаа мэдэхгүй байна уу? <b>Зургаар сонгоод санал аваарай →</b></a>
   <div class="regions" id="regions"></div>
   <div class="opts">
     <label>Машины төрөл
@@ -210,10 +215,12 @@
 </footer>
 <button class="fb-btn" onclick="openFeedback()" aria-label="Санал хүсэлт">💬 <span>Санал хүсэлт</span></button>
 
-<script src="config.js?v=202611180913"></script>
+<script src="config.js?v=202611181030"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="auth.js?v=202611180913"></script>
-<script src="app.js?v=202611180913"></script>
-<script src="features.js?v=202611180913"></script>
+<script src="auth.js?v=202611181030"></script>
+<script src="app.js?v=202611181030"></script>
+<script src="features.js?v=202611181030"></script>
+<script src="guide.js?v=202611181030"></script>
+<script src="community.js?v=202611181030"></script>
 </body>
 </html>

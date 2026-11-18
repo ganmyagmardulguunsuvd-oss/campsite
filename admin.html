@@ -7,7 +7,7 @@
 <title>Админ — Монгол аялал</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=202611180913">
+<link rel="stylesheet" href="style.css?v=202611181030">
 <style>
 header{padding:20px 0 18px}
 header h1{font-size:24px}
@@ -44,9 +44,9 @@ header h1{font-size:24px}
 </div>
 <div class="toast" id="toast"></div>
 
-<script src="config.js?v=202611180913"></script>
+<script src="config.js?v=202611181030"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="auth.js?v=202611180913"></script>
+<script src="auth.js?v=202611181030"></script>
 <script>
 const $=s=>document.querySelector(s);
 const cfg=window.APP_CONFIG||{};
@@ -91,13 +91,15 @@ async function load(){
  if(!Auth.user){$('#main').innerHTML='<div class="card empty">Админ хэсэгт орохын тулд нэвтэрнэ үү.<br><br><button class="btn" onclick="openLogin()">Нэвтрэх</button></div>';return}
  if(admin===null) admin=await Auth.isAdmin();
  if(!admin){$('#main').innerHTML='<div class="card empty">Энэ бүртгэлд админ эрх алга.</div>';return}
- const [{data:st,error:e1},{data:rows,error:e2},fbc,hsc]=await Promise.all([Auth.stats(),
+ const [{data:st,error:e1},{data:rows,error:e2},fbc,hsc,acc]=await Promise.all([Auth.stats(),
+  tab==='stories'?Auth.listStories({admin:true,limit:200}):tab==='camps'?Auth.listCampsAdmin():tab==='roads'?Auth.listRoads():tab==='reports'?Auth.listReports():
   tab==='premium'?Auth.listPremium():tab==='feedback'?Auth.listFeedback():tab==='fuel'?Auth.fuelPrices():tab==='homestay'?Auth.listHomestaysAdmin():Auth.listRequests(tab==='all'?null:tab),
-  Auth.countNewFeedback(),Auth.countPendingHomestays()]);
- const fbNew=(fbc&&fbc.count)||0, hsNew=(hsc&&hsc.count)||0;
+  Auth.countNewFeedback(),Auth.countPendingHomestays(),Auth.adminCounts()]);
+ const fbNew=(fbc&&fbc.count)||0, hsNew=(hsc&&hsc.count)||0, cc=(acc&&acc.data)||{};
  if(e1||e2){$('#main').innerHTML=`<div class="card empty">Алдаа: ${esc((e1||e2).message)}</div>`;return}
  const s=st||{};
- const tabs=[['pending',`Хүлээгдэж буй (${s.pending||0})`],['approved','Батлагдсан'],['rejected','Татгалзсан'],['all','Бүгд'],['premium',`Премиум хэрэглэгчид (${s.premium||0})`],['feedback',`💬 Санал хүсэлт${fbNew?` (${fbNew} шинэ)`:''}`],['homestay',`🐎 Айл буудал${hsNew?` (${hsNew} шинэ)`:''}`],['fuel','⛽ Шатахууны үнэ']];
+ const tabs=[['pending',`Хүлээгдэж буй (${s.pending||0})`],['approved','Батлагдсан'],['rejected','Татгалзсан'],['all','Бүгд'],['premium',`Премиум хэрэглэгчид (${s.premium||0})`],['feedback',`💬 Санал хүсэлт${fbNew?` (${fbNew} шинэ)`:''}`],['homestay',`🐎 Айл буудал${hsNew?` (${hsNew} шинэ)`:''}`],['fuel','⛽ Шатахууны үнэ'],
+  ['stories',`📖 Түүх${cc.stories?` (${cc.stories} шинэ)`:''}`],['camps',`🏕️ Кемп${cc.camps?` (${cc.camps} шинэ)`:''}`],['roads',`🚧 Замын мэдээ (${cc.roads||0})`],['reports',`🚩 Мэдээлэл${cc.reports?` (${cc.reports} шинэ)`:''}`]];
  $('#main').innerHTML=`
   <section class="adm-stats">
    <div class="stat"><b>${fmt(s.users)}</b><span>Нийт хэрэглэгч</span></div>
@@ -107,7 +109,7 @@ async function load(){
   </section>
   <section class="card">
    <div class="tabs">${tabs.map(([k,l])=>`<button class="tab ${k===tab?'on':''}" onclick="setTab('${k}')">${l}</button>`).join('')}</div>
-   ${tab==='premium'?premiumList(rows):tab==='feedback'?fbList(rows):tab==='fuel'?fuelList(rows):tab==='homestay'?hsList(rows):reqList(rows)}
+   ${tab==='stories'?storyAdm(rows):tab==='camps'?campAdm(rows):tab==='roads'?roadAdm(rows):tab==='reports'?reportAdm(rows):tab==='premium'?premiumList(rows):tab==='feedback'?fbList(rows):tab==='fuel'?fuelList(rows):tab==='homestay'?hsList(rows):reqList(rows)}
   </section>
   <section class="card">
    <h2>Имэйлээр эрх өгөх</h2>
@@ -178,6 +180,65 @@ async function hsSet(id,st){
  const {error}=await Auth.setHomestayStatus(id,st);
  if(error){toast('Алдаа: '+error.message);return}
  load();
+}
+
+// ---- Түүх ----
+const STS={draft:'Ноорог',pending:'Шинэ',approved:'Нийтэлсэн',rejected:'Татгалзсан'};
+function storyAdm(rows){
+ if(!rows||!rows.length) return '<div class="empty">Түүх алга.</div>';
+ rows=rows.filter(r=>r.status!=='draft').sort((a,b)=>(a.status==='pending'?0:1)-(b.status==='pending'?0:1));
+ return rows.map(r=>`<div class="rq" style="${r.status==='rejected'?'opacity:.5':''}">
+  <div><div class="who"><a href="./#story/${r.id}" target="_blank">${esc(r.title)}</a> <span class="st ${r.status==='approved'?'approved':r.status==='rejected'?'rejected':'pending'}">${STS[r.status]}</span></div>
+   <div class="meta">@${esc(r.author)} · ${dt(r.created_at)} · ❤️ ${r.likes} · 💬 ${r.comments}</div>
+   <div class="meta">${esc((r.excerpt||'').slice(0,160))}…</div></div>
+  <div class="act">${r.status!=='approved'?`<button class="btn sm ok" onclick="stSet('${r.id}','approved')">✓ Нийтлэх</button>`:''}${r.status!=='rejected'?`<button class="btn sm no" onclick="stReject('${r.id}')">✕</button>`:''}<button class="btn sm no" onclick="stDel('${r.id}')">🗑️</button></div></div>`).join('');
+}
+async function stSet(id,st,note){const {error}=await Auth.setStoryStatus(id,st,note);if(error){toast('Алдаа: '+error.message);return}toast('✅');load()}
+function stReject(id){const n=prompt('Татгалзсан шалтгаан (зохиогчид харагдана):','Агуулга дүрэмд нийцэхгүй байна');if(n!==null)stSet(id,'rejected',n)}
+async function stDel(id){if(!confirm('Түүхийг бүр мөсөн устгах уу?'))return;const {error}=await Auth.deleteStory(id);if(error){toast(error.message);return}load()}
+// ---- Кемп ----
+function campAdm(rows){
+ if(!rows||!rows.length) return '<div class="empty">Кемп алга.</div>';
+ return rows.map(c=>`<div class="rq" style="${c.status==='rejected'?'opacity:.5':''}">
+  <div><div class="who">${esc(c.name)} <span class="st ${c.status==='approved'?'approved':c.status==='rejected'?'rejected':'pending'}">${c.status==='approved'?'Нийтэлсэн':c.status==='rejected'?'Татгалзсан':'Шинэ'}</span>
+    ${c.is_owner?'<span class="st approved">Эзэмшигч</span>':'<span class="st">Аялагч</span>'}${c.verified?' ✓':''}${c.featured?' ⭐':''}</div>
+   <div class="meta">${esc(c.aimag)}${c.soum?' · '+esc(c.soum):''}${c.near?' · '+esc(c.near):''}${c.phone?' · 📞 '+esc(c.phone):''} · ${dt(c.created_at)}</div>
+   <div class="meta">${['fb','ig','web'].filter(k=>c[k]).map(k=>`<a href="${esc(c[k])}" target="_blank" rel="noopener nofollow">${k}</a>`).join(' · ')}${c.price?' · '+esc(c.price):''}${c.season?' · '+esc(c.season):''}${c.photo?` · <a href="${esc(c.photo)}" target="_blank">зураг</a>`:''}${c.lat?` · <a href="https://maps.google.com/?q=${c.lat},${c.lng}" target="_blank">GPS</a>`:''}</div>
+   ${c.description?`<div style="white-space:pre-wrap;margin-top:4px;font-size:14px">${esc(c.description)}</div>`:''}</div>
+  <div class="act">${c.status!=='approved'?`<button class="btn sm ok" onclick="cpSet('${c.id}',{status:'approved'})">✓ Нийтлэх</button>`:''}${c.status!=='rejected'?`<button class="btn sm no" onclick="cpSet('${c.id}',{status:'rejected'})">✕</button>`:''}
+   <button class="btn sm ${c.verified?'no':'ok'}" onclick="cpSet('${c.id}',{verified:${!c.verified}})">${c.verified?'Баталгаа хасах':'✓ Баталгаажсан'}</button>
+   <button class="btn sm ${c.featured?'no':''}" onclick="cpSet('${c.id}',{featured:${!c.featured}})">${c.featured?'Онцлохоос хасах':'⭐ Онцлох'}</button>
+   <button class="btn sm no" onclick="cpDel('${c.id}')">🗑️</button></div></div>`).join('');
+}
+async function cpSet(id,patch){const {error}=await Auth.updateCamp(id,patch);if(error){toast('Алдаа: '+error.message);return}load()}
+async function cpDel(id){if(!confirm('Кемпийг устгах уу?'))return;const {error}=await Auth.deleteCamp(id);if(error){toast(error.message);return}load()}
+// ---- Замын мэдээ ----
+const RK={flood:'🌊 Үер',bridge:'🌉 Гүүр',mud:'🟤 Шавар',snow:'❄️ Цас/мөс',closed:'⛔ Хаалттай',nofuel:'⛽ Шатахуун',works:'🚧 Засвар',other:'⚠️ Бусад'};
+function roadAdm(rows){
+ if(!rows||!rows.length) return '<div class="empty">Замын мэдээ алга.</div>';
+ return rows.map(r=>`<div class="rq" style="${r.hidden?'opacity:.5':''}">
+  <div><div class="who">${RK[r.kind]||r.kind} — ${esc(r.place)} ${r.hidden?'<span class="st rejected">Нуусан</span>':''}</div>
+   <div class="meta">${esc(r.aimag)} · ${r.author?'@'+esc(r.author)+' · ':''}${dt(r.created_at)} · 👍 ${r.confirms} · ✅ ${r.resolved}</div>
+   ${r.note?`<div class="meta">${esc(r.note)}</div>`:''}</div>
+  <div class="act"><button class="btn sm ${r.hidden?'ok':'no'}" onclick="rdHide('${r.id}',${!r.hidden})">${r.hidden?'Харуулах':'Нуух'}</button><button class="btn sm no" onclick="rdDel('${r.id}')">🗑️</button></div></div>`).join('');
+}
+async function rdHide(id,h){const {error}=await Auth.hideRoad(id,h);if(error){toast(error.message);return}load()}
+async function rdDel(id){if(!confirm('Устгах уу?'))return;const {error}=await Auth.deleteRoad(id);if(error){toast(error.message);return}load()}
+// ---- Мэдээлэл (report) ----
+const RT={story:'📖 Түүх',comment:'💬 Сэтгэгдэл',camp:'🏕️ Кемп',review:'⭐ Үнэлгээ',road:'🚧 Замын мэдээ'};
+function reportAdm(rows){
+ if(!rows||!rows.length) return '<div class="empty">Мэдээлэл алга.</div>';
+ return rows.map(r=>`<div class="rq" style="${r.status==='done'?'opacity:.5':''}">
+  <div><div class="who">${RT[r.target_type]||r.target_type} ${r.status==='new'?'<span class="st pending">Шинэ</span>':''}</div>
+   <div>${esc(r.reason||'')}</div><div class="meta">${dt(r.created_at)} · ${r.target_id}</div></div>
+  <div class="act">${r.target_type==='story'?`<a class="btn sm" href="./#story/${r.target_id}" target="_blank">Харах</a>`:r.target_type==='camp'?`<a class="btn sm" href="./#camp/${r.target_id}" target="_blank">Харах</a>`:`<button class="btn sm no" onclick="rpHide('${r.target_type}','${r.target_id}','${r.id}')">Нуух</button>`}
+   ${r.status==='new'?`<button class="btn sm ok" onclick="rpDone('${r.id}')">✓ Шийдсэн</button>`:''}</div></div>`).join('');
+}
+async function rpDone(id){const {error}=await Auth.setReportStatus(id,'done');if(error){toast(error.message);return}load()}
+async function rpHide(type,tid,rid){
+ const f=type==='comment'?Auth.hideComment:type==='review'?Auth.hideReview:type==='road'?(id=>Auth.hideRoad(id,true)):null;
+ if(!f) return; const {error}=await f(tid); if(error){toast(error.message);return}
+ await Auth.setReportStatus(rid,'done'); toast('Нууллаа'); load();
 }
 function setTab(k){tab=k;load()}
 async function approve(id,btn){

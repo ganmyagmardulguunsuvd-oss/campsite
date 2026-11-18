@@ -11,7 +11,7 @@
   async function loadProfile() {
     if (!sb || !state.user) { state.profile = null; state.pending = null; return }
     const { data, error } = await sb.from('profiles')
-      .select('id,email,premium_until,trial_used_at').eq('id', state.user.id).maybeSingle();
+      .select('id,email,premium_until,trial_used_at,username').eq('id', state.user.id).maybeSingle();
     if (error) console.warn('profile:', error.message);
     state.profile = data || null;
     const r = await sb.from('payment_requests').select('id,ref_code,amount,status,created_at')
@@ -45,6 +45,10 @@
     signInGoogle() {
       return sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: redirect() } });
     },
+    get username() { return (state.profile && state.profile.username) || null },
+    async setUsername(name) { const r = await sb.rpc('set_username', { p_name: name }); if (!r.error) await loadProfile(); emit(); return r },
+    verifySignupCode(email, token) { return sb.auth.verifyOtp({ email, token, type: 'signup' }) },
+    resendSignupCode(email) { return sb.auth.resend({ type: 'signup', email, options: { emailRedirectTo: redirect() } }) },
     signUpPassword(email, password) {
       return sb.auth.signUp({ email, password, options: { emailRedirectTo: redirect() } });
     },
@@ -108,6 +112,65 @@
     submitHomestay(row) { return sb.from('homestays').insert({ ...row, submitted_by: state.user.id }) },
     setHomestayStatus(id, status) { return sb.from('homestays').update({ status }).eq('id', id) },
     deleteHomestay(id) { return sb.from('homestays').delete().eq('id', id) },
+
+    // Зураг оруулах (storage: media/<user_id>/...)
+    async upload(blob, folder) {
+      const path = `${state.user.id}/${folder}/${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}.jpg`;
+      const { error } = await sb.storage.from('media').upload(path, blob, { contentType: 'image/jpeg', cacheControl: '31536000', upsert: false });
+      if (error) return { error };
+      return { data: sb.storage.from('media').getPublicUrl(path).data.publicUrl };
+    },
+    report(target_type, target_id, reason) { return sb.from('reports').insert({ target_type, target_id, reason: reason || null }) },
+
+    // Замын мэдээ (#11)
+    listRoads() { return sb.from('road_reports').select('*').order('last_confirmed_at', { ascending: false }).limit(300) },
+    addRoad(row) { return sb.from('road_reports').insert(row).select('*').single() },
+    voteRoad(id, vote) { return sb.rpc('vote_road', { p_id: id, p_vote: vote }) },
+    myRoadVotes() { return state.user ? sb.from('road_votes').select('report_id,vote').eq('user_id', state.user.id) : Promise.resolve({ data: [] }) },
+    deleteRoad(id) { return sb.from('road_reports').delete().eq('id', id) },
+    hideRoad(id, hidden) { return sb.from('road_reports').update({ hidden }).eq('id', id) },
+
+    // Аяллын түүх (#8)
+    listStories(o = {}) {
+      let q = sb.from('stories').select('id,author,title,cover,aimags,days,cost,likes,comments,status,created_at,excerpt')
+        .order('created_at', { ascending: false }).limit(o.limit || 60);
+      if (o.mine) q = q.eq('user_id', state.user.id); else if (!o.admin) q = q.eq('status', 'approved');
+      if (o.status) q = q.eq('status', o.status);
+      if (o.author) q = q.eq('author', o.author);
+      if (o.aimag) q = q.contains('aimags', [o.aimag]);
+      return q;
+    },
+    getStory(id) { return sb.from('stories').select('*').eq('id', id).maybeSingle() },
+    saveStory(row, id) {
+      row = { ...row, updated_at: new Date().toISOString() };
+      return id ? sb.from('stories').update(row).eq('id', id).select('id,status').single()
+        : sb.from('stories').insert(row).select('id,status').single();
+    },
+    deleteStory(id) { return sb.from('stories').delete().eq('id', id) },
+    setStoryStatus(id, status, admin_note) { return sb.from('stories').update({ status, admin_note: admin_note || null }).eq('id', id) },
+    async likedStory(id) { if (!state.user) return false; const { data } = await sb.from('story_likes').select('story_id').eq('story_id', id).eq('user_id', state.user.id).maybeSingle(); return !!data },
+    like(id) { return sb.from('story_likes').insert({ story_id: id }) },
+    unlike(id) { return sb.from('story_likes').delete().eq('story_id', id).eq('user_id', state.user.id) },
+    listComments(id) { return sb.from('story_comments').select('*').eq('story_id', id).order('created_at').limit(300) },
+    addComment(story_id, body) { return sb.from('story_comments').insert({ story_id, body }).select('*').single() },
+    deleteComment(id) { return sb.from('story_comments').delete().eq('id', id) },
+    hideComment(id) { return sb.from('story_comments').update({ hidden: true }).eq('id', id) },
+
+    // Кемп (#6)
+    listCamps() { return sb.from('camps').select('*').eq('status', 'approved').order('featured', { ascending: false }).order('rating', { ascending: false }).limit(1000) },
+    listCampsAdmin(status) { let q = sb.from('camps').select('*').order('created_at', { ascending: false }).limit(300); if (status) q = q.eq('status', status); return q },
+    submitCamp(row) { return sb.from('camps').insert({ ...row, submitted_by: state.user.id }) },
+    updateCamp(id, patch) { return sb.from('camps').update(patch).eq('id', id) },
+    deleteCamp(id) { return sb.from('camps').delete().eq('id', id) },
+    listReviews(camp_id) { return sb.from('camp_reviews').select('*').eq('camp_id', camp_id).order('created_at', { ascending: false }).limit(100) },
+    addReview(camp_id, rating, body) { return sb.from('camp_reviews').insert({ camp_id, rating, body: body || null }) },
+    deleteReview(id) { return sb.from('camp_reviews').delete().eq('id', id) },
+    hideReview(id) { return sb.from('camp_reviews').update({ hidden: true }).eq('id', id) },
+
+    // Админ: шинэ зүйлсийн тоо, мэдээлэл
+    adminCounts() { return sb.rpc('admin_counts') },
+    listReports(status) { let q = sb.from('reports').select('*').order('created_at', { ascending: false }).limit(300); if (status) q = q.eq('status', status); return q },
+    setReportStatus(id, status) { return sb.from('reports').update({ status }).eq('id', id) },
 
     // Админ
     async isAdmin() { if (!sb || !state.user) return false; const { data } = await sb.rpc('is_admin'); return !!data },

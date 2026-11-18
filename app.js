@@ -230,6 +230,7 @@ function renderSummary(route){
    <div class="stat warm"><b>${days} өдөр</b><span>Хөтөлбөрийн урт (доор дэлгэрэнгүй)</span></div>
   </div>
   <ul class="legs">${legs.map(([a,b,d],i)=>`<li><span class="dot">${i+1}</span>${a.c||a.n} → ${b.c||b.n}<span class="km">${a===UB||b===UB?'':'~'}${fmt(d)} км · ~${(d/60).toFixed(1)} ц</span></li>`).join('')}</ul>
+  ${window.roadWarnHtml?roadWarnHtml(route):''}
   ${seasonBlock(route)}
   ${need4.length?`<div class="warn">🚙 <b>${need4.map(a=>a.n).join(', ')}</b>-ийн зарим газар руу шороон, хүнд зам байна. Тэдгээрийг үзэх бол 4x4 машин, нөөц дугуй, шатахуунтай яваарай.</div>`:''}
   ${route.some(a=>a.km>900)?`<div class="warn">🛣️ Баруун аймгууд руу УБ-аас 2–3 өдөр явдаг. Хугацаа бага бол нэг тийш нь онгоцоор нисэх боломжийг харгалзаарай.</div>`:''}
@@ -400,7 +401,7 @@ function buildPlan(route){
     if(!g.length) slots.push([10,`${s.c} хотоор зугаалах, амрах`]);
     slots.push([Math.max(t,18),'Оройн хоол, амралт']);
     const key=g.length?g[0][0].split(/[ ,(]/)[0]:'';
-    const camp=(key&&s.camps.find(c=>c.includes(key)))||s.camps[0];
+    const camp=(window.campFor&&campFor(s,g))||(key&&s.camps.find(c=>c.includes(key)))||s.camps[0];
     days.push({type:'sight',title:`${s.n}: ${g.length?g.map(p=>p[0]).join(', '):'амралтын өдөр'}`,km:0,items:slots,
       sleep:camp,sleepAt:s.c,skipped:gi===0?skipped:[],offSeason:gi===0?offSeason:[]});
    });
@@ -470,7 +471,7 @@ function renderAcct(){
  const u=Auth.user;
  if(!u){el.innerHTML='<button class="solid" onclick="openLogin()">Нэвтрэх</button>';return}
  const pro=Auth.isPremium(), until=Auth.premiumUntil();
- el.innerHTML=`<span class="who">${esc(u.email||'')}</span>
+ el.innerHTML=`<span class="who" title="${esc(u.email||'')}">${Auth.username?'@'+esc(Auth.username):esc(u.email||'')}</span>
   ${pro?`<span class="badge pro" title="${until?until.toLocaleString():''} хүртэл">${Auth.isTrial()?'🎁 Туршилт':'★ Премиум'}</span>`:Auth.pending?'<button onclick="openPremium()">⏳ Шалгагдаж байна</button>':'<span class="badge">Үнэгүй</span>'}
   ${pro?'<button onclick="openTrips()">Миний аяллууд</button>':Auth.pending?'':'<button class="solid" onclick="openPremium()">Премиум</button>'}
   <button onclick="Auth.signOut()">Гарах</button>`;
@@ -483,6 +484,8 @@ const authErr=m=>{
  if(/at least 6|Password should/i.test(m)) return 'Нууц үг хамгийн багадаа 6 тэмдэгт байна.';
  if(/rate limit|too many/i.test(m)) return 'Хэт олон оролдлого хийлээ. Түр хүлээгээд дахин оролдоно уу.';
  if(/valid email|invalid format/i.test(m)) return 'Имэйл хаяг буруу байна.';
+ if(/DISPOSABLE_EMAIL|Database error saving new user/i.test(m)) return 'Энэ имэйл хаягаар бүртгүүлэх боломжгүй. Өөрийн байнга ашигладаг имэйлээ оруулна уу.';
+ if(/Error sending|sending confirmation|smtp/i.test(m)) return 'Имэйл илгээж чадсангүй. Түр хүлээгээд дахин оролдоно уу.';
  return m;
 };
 function openLogin(mode){
@@ -522,12 +525,49 @@ async function pwAuth(e,reg){
  const email=$('#authEmail').value.trim(), pass=$('#authPass').value, msg=$('#authMsg'), btn=$('#authBtn');
  msg.textContent='';
  if(reg&&pass!==$('#authPass2').value){msg.textContent='Нууц үг таарахгүй байна.';return}
+ if(reg&&isTempMail(email)){msg.textContent='Түр/нэг удаагийн имэйлээр бүртгүүлэх боломжгүй. Өөрийн байнга ашигладаг имэйлээ оруулна уу.';return}
  btn.disabled=true;
  const {data,error}=reg?await Auth.signUpPassword(email,pass):await Auth.signInPassword(email,pass);
  btn.disabled=false;
- if(error){msg.textContent=authErr(error.message);return}
- if(reg&&!data.session){$('#modalBody').innerHTML=`<h3>📩 Имэйлээ баталгаажуулна уу</h3><p><b>${esc(email)}</b> руу баталгаажуулах холбоос илгээлээ.</p>`;return}
+ if(error){
+  if(!reg&&/Email not confirmed/i.test(error.message)){msg.innerHTML='Имэйл баталгаажаагүй байна. <a href="#" onclick="resendCode(\''+esc(email)+'\',true);return false">Код авах →</a>';return}
+  msg.textContent=authErr(error.message);return}
+ if(reg&&data.user&&Array.isArray(data.user.identities)&&!data.user.identities.length){msg.textContent=authErr('already registered');return}
+ if(reg&&!data.session){openCodeForm(email);return}
  closeModal();toast(reg?'🎉 Тавтай морил! Бүртгэл үүслээ':'Амжилттай нэвтэрлээ');
+}
+// ---------- Имэйлийн 6 оронтой код (#4) ----------
+const TEMP_MAIL=['mailinator.com','guerrillamail.com','guerrillamail.net','sharklasers.com','10minutemail.com','10minutemail.net','tempmail.com','temp-mail.org','temp-mail.io','tempmail.net','tempmailo.com','tempr.email','throwawaymail.com','yopmail.com','yopmail.net','getnada.com','nada.email','trashmail.com','trashmail.de','dispostable.com','maildrop.cc','mailnesia.com','mintemail.com','fakeinbox.com','emailondeck.com','moakt.com','mohmal.com','mailcatch.com','spamgourmet.com','getairmail.com','burnermail.io','inboxkitten.com','emailfake.com','tmpmail.org','tmpmail.net','minuteinbox.com','discard.email','mail.tm','mail.gw','1secmail.com','luxusmail.org','dropmail.me','fakemail.net','spambox.us','mytemp.email','tempinbox.com'];
+const isTempMail=e=>TEMP_MAIL.includes(String(e).split('@')[1]?.toLowerCase());
+function openCodeForm(email){
+ window._otpEmail=email;
+ openModal(`<h3>📩 Имэйлээ шалгаарай</h3>
+  <p><b>${esc(email)}</b> хаяг руу <b>баталгаажуулах код</b> илгээлээ. Ирэхгүй бол <b>Spam / Promotions</b> хавтсаа шалгаарай.</p>
+  <form onsubmit="verifyCode(event)">
+   <input class="field code-in" id="otp" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="Код" required>
+   <div id="otpMsg" class="note" style="color:var(--red)"></div>
+   <button class="btn wide" type="submit" id="otpBtn">Баталгаажуулах</button></form>
+  <p class="note" style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><a href="#" id="resendA" onclick="resendCode();return false">Код дахин илгээх</a><a href="#" onclick="openLogin('signup');return false">Имэйлээ засах</a></p>`);
+ setTimeout(()=>{const i=$('#otp');if(i)i.focus()},50);
+}
+async function verifyCode(e){
+ e.preventDefault();
+ const code=$('#otp').value.replace(/\D/g,''), btn=$('#otpBtn');
+ if(code.length<6){$('#otpMsg').textContent='Кодоо бүтэн оруулна уу.';return}
+ btn.disabled=true;
+ const {error}=await Auth.verifySignupCode(window._otpEmail,code);
+ btn.disabled=false;
+ if(error){$('#otpMsg').textContent=/expired|invalid/i.test(error.message)?'Код буруу эсвэл хугацаа нь дууссан байна. «Код дахин илгээх» дарна уу.':authErr(error.message);return}
+ closeModal();toast('🎉 Имэйл баталгаажлаа! Тавтай морил');
+}
+async function resendCode(email,open){
+ email=email||window._otpEmail; if(!email) return;
+ const a=$('#resendA'); if(a&&a.dataset.wait) return;
+ const {error}=await Auth.resendSignupCode(email);
+ if(open) openCodeForm(email);
+ if(error){toast(authErr(error.message));return}
+ toast('📩 Шинэ код илгээлээ');
+ const b=$('#resendA'); if(b){let t=60;b.dataset.wait=1;const iv=setInterval(()=>{if(!b.isConnected||--t<=0){clearInterval(iv);if(b.isConnected){b.textContent='Код дахин илгээх';delete b.dataset.wait}return}b.textContent=`Дахин илгээх (${t})`},1000)}
 }
 async function doReset(e){
  e.preventDefault();
