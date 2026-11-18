@@ -158,15 +158,17 @@ const LEGENDS = {
   'Хөгнө Тарнын БЦГ (Хөгнө хан уул)': 'Хөгнө хан ууланд 17-р зуунд Эрдэнэ хамбын хийд байгуулагдсан бөгөөд 1680-аад оны дайнд сүйдсэн гэж ярьдаг. Хожим сэргээн босгосон. Ой, хад, тал, элс бүгд нэг дор оршдог тул «Бяцхан Монгол» гэж ч нэрлэдэг.'
 };
 let speakingBtn = null;
+// Монгол дуу хоолой суусан төхөөрөмжид л «Сонсох» товч харагдана (бичлэгтэй аудио дараа нэмэгдэнэ)
+const hasMnVoice = () => !!(window.speechSynthesis && speechSynthesis.getVoices().some(v => /^mn/i.test(v.lang)));
 function decorateLegends() {
   document.querySelectorAll('.place h4').forEach(h => {
     const k = h.textContent.trim(), box = h.parentElement;
     if (!LEGENDS[k] || box.querySelector('.leg')) return;
     const div = document.createElement('div'); div.className = 'leg';
     div.innerHTML = `<button type="button" class="leg-btn">📜 Домог, түүх</button><div class="leg-body" hidden><p>${esc(LEGENDS[k])}</p>
-      <button type="button" class="copy leg-play">▶ Сонсох</button><small class="note"> Аман яриа, түүхийг товчлов.</small></div>`;
+      ${hasMnVoice() ? '<button type="button" class="copy leg-play">▶ Сонсох</button>' : ''}<small class="note"> Аман яриа, түүхийг товчлов.</small></div>`;
     div.querySelector('.leg-btn').onclick = () => { const b = div.querySelector('.leg-body'); b.hidden = !b.hidden };
-    div.querySelector('.leg-play').onclick = e => speakLegend(k, e.currentTarget);
+    const pl = div.querySelector('.leg-play'); if (pl) pl.onclick = e => speakLegend(k, e.currentTarget);
     box.insertBefore(div, box.querySelector('.tags'));
   });
 }
@@ -183,7 +185,10 @@ function speakLegend(k, btn) {
   u.onend = u.onerror = () => { btn.textContent = '▶ Сонсох'; if (speakingBtn === btn) speakingBtn = null };
   speakingBtn = btn; btn.textContent = '⏹ Зогсоох'; s.speak(u);
 }
-if (window.speechSynthesis) speechSynthesis.getVoices();
+if (window.speechSynthesis) {
+  speechSynthesis.getVoices();
+  speechSynthesis.onvoiceschanged = () => { if (hasMnVoice()) { document.querySelectorAll('.leg').forEach(e => e.remove()); decorateLegends() } };
+}
 
 // ================= 5. Айл буудал, нутгийн бүтээгдэхүүн =================
 const HS_OFFERS = [['stay', '🛏️ Айлд хонох'], ['airag', '🥛 Айраг'], ['dairy', '🧀 Ааруул, цагаан идээ'], ['meat', '🥩 Мах, борц'], ['craft', '🧶 Ноос, гар урлал'], ['horse', '🐎 Морь, тэмээ унах']];
