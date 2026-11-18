@@ -494,7 +494,8 @@ function openLogin(mode){
  if(mode==='reset'){
   openModal(`<h3>Нууц үг сэргээх</h3>
    <form onsubmit="doReset(event)"><input class="field" type="email" id="authEmail" placeholder="таны@имэйл.mn" required>
-   <button class="btn wide" type="submit">Сэргээх холбоос илгээх</button></form>
+   <button class="btn wide" type="submit">Код илгээх</button></form>
+   <p class="note" style="margin-top:0">Имэйл рүү тань ирсэн кодоор шинэ нууц үгээ тохируулна.</p>
    <p class="note"><a href="#" onclick="openLogin('login');return false">← Нэвтрэх рүү буцах</a></p>`);
   return;
  }
@@ -571,9 +572,47 @@ async function resendCode(email,open){
 }
 async function doReset(e){
  e.preventDefault();
- const email=$('#authEmail').value.trim();
+ const email=$('#authEmail').value.trim(), btn=e.target.querySelector('button');
+ if(btn) btn.disabled=true;
  const {error}=await Auth.resetPassword(email);
- $('#modalBody').innerHTML=error?`<h3>Алдаа</h3><p>${esc(authErr(error.message))}</p>`:`<h3>📩 Имэйлээ шалгаарай</h3><p><b>${esc(email)}</b> руу нууц үг сэргээх холбоос илгээлээ. Холбоос дээр дарсны дараа шинэ нууц үгээ оруулна.</p>`;
+ if(btn) btn.disabled=false;
+ if(error){$('#modalBody').innerHTML=`<h3>Алдаа</h3><p>${esc(authErr(error.message))}</p><p class="note"><a href="#" onclick="openLogin('reset');return false">← Дахин оролдох</a></p>`;return}
+ openResetCodeForm(email);
+}
+// ---------- Нууц үгийг кодоор сэргээх ----------
+function openResetCodeForm(email){
+ window._rcEmail=email;
+ openModal(`<h3>🔑 Нууц үг сэргээх</h3>
+  <p><b>${esc(email)}</b> хаяг руу <b>код</b> илгээлээ. Ирэхгүй бол <b>Spam</b> хавтсаа шалгаарай.</p>
+  <form onsubmit="doResetWithCode(event)">
+   <input class="field code-in" id="rcCode" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="Код" required>
+   <input class="field" type="password" id="rcP1" placeholder="Шинэ нууц үг (6+ тэмдэгт)" minlength="6" autocomplete="new-password" required>
+   <input class="field" type="password" id="rcP2" placeholder="Шинэ нууц үгээ давтах" minlength="6" autocomplete="new-password" required>
+   <div id="rcMsg" class="note" style="color:var(--red)"></div>
+   <button class="btn wide" type="submit" id="rcBtn">Нууц үг шинэчлэх</button></form>
+  <p class="note" style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><a href="#" id="rcResend" onclick="resendResetCode();return false">Код дахин илгээх</a><a href="#" onclick="openLogin('reset');return false">Имэйлээ засах</a></p>`);
+ setTimeout(()=>{const i=$('#rcCode');if(i)i.focus()},50);
+}
+async function doResetWithCode(e){
+ e.preventDefault();
+ const code=$('#rcCode').value.replace(/\D/g,''), p1=$('#rcP1').value, msg=$('#rcMsg'), btn=$('#rcBtn');
+ if(code.length<6){msg.textContent='Кодоо бүтэн оруулна уу.';return}
+ if(p1.length<6){msg.textContent='Нууц үг хамгийн багадаа 6 тэмдэгт байна.';return}
+ if(p1!==$('#rcP2').value){msg.textContent='Нууц үг таарахгүй байна.';return}
+ btn.disabled=true; window._resetFlow=true;
+ const v=await Auth.verifyRecoveryCode(window._rcEmail,code);
+ if(v.error){btn.disabled=false;window._resetFlow=false;msg.textContent=/expired|invalid/i.test(v.error.message)?'Код буруу эсвэл хугацаа нь дууссан байна. «Код дахин илгээх» дарна уу.':authErr(v.error.message);return}
+ const u=await Auth.updatePassword(p1);
+ btn.disabled=false; window._resetFlow=false;
+ if(u.error){msg.textContent=/different from the old|same/i.test(u.error.message)?'Шинэ нууц үг хуучнаасаа өөр байх ёстой.':authErr(u.error.message);return}
+ closeModal();toast('✅ Нууц үг шинэчлэгдлээ. Та нэвтэрсэн байна');
+}
+async function resendResetCode(){
+ const a=$('#rcResend'); if(!window._rcEmail||(a&&a.dataset.wait)) return;
+ const {error}=await Auth.resetPassword(window._rcEmail);
+ if(error){toast(authErr(error.message));return}
+ toast('📩 Шинэ код илгээлээ');
+ if(a){let t=60;a.dataset.wait=1;const iv=setInterval(()=>{if(!a.isConnected||--t<=0){clearInterval(iv);if(a.isConnected){a.textContent='Код дахин илгээх';delete a.dataset.wait}return}a.textContent=`Дахин илгээх (${t})`},1000)}
 }
 function openNewPassword(){
  openModal(`<h3>Шинэ нууц үг тохируулах</h3>
@@ -811,7 +850,7 @@ function renderFooter(){
 }
 
 function render(){renderChips();const r=order();renderMap(r);renderSummary(r);renderPlan(r);renderDetails(r);renderAcct();if(window.afterRender)afterRender()}
-if(window.Auth) Auth.onChange(()=>{render();if(Auth.recovery)openNewPassword();if(wantTrial&&Auth.user&&Auth.ready){wantTrial=false;startTrial()}});
+if(window.Auth) Auth.onChange(()=>{render();if(Auth.recovery&&!window._resetFlow)openNewPassword();if(wantTrial&&Auth.user&&Auth.ready){wantTrial=false;startTrial()}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
 ['car','price','perday','ret','sdays','start','season'].forEach(id=>$('#'+id).addEventListener('input',render));
 render();renderFooter();

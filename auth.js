@@ -48,6 +48,7 @@
     get username() { return (state.profile && state.profile.username) || null },
     async setUsername(name) { const r = await sb.rpc('set_username', { p_name: name }); if (!r.error) await loadProfile(); emit(); return r },
     verifySignupCode(email, token) { return sb.auth.verifyOtp({ email, token, type: 'signup' }) },
+    verifyRecoveryCode(email, token) { return sb.auth.verifyOtp({ email, token, type: 'recovery' }) },
     resendSignupCode(email) { return sb.auth.resend({ type: 'signup', email, options: { emailRedirectTo: redirect() } }) },
     signUpPassword(email, password) {
       return sb.auth.signUp({ email, password, options: { emailRedirectTo: redirect() } });
