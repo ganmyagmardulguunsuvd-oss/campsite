@@ -363,3 +363,13 @@ textarea.field{resize:vertical;font:15px Rubik,sans-serif}
 a.copy{text-decoration:none;color:var(--ink);display:inline-block}
 [id]{scroll-margin-top:64px}
 .chip.start{background:#fdecea;border-color:#c0392b;color:#c0392b;cursor:default}
+/* ===== Зургууд ===== */
+.ph-h{margin:14px 0 8px;font-size:15.5px}.ph-h small{font-weight:400;color:var(--muted);font-size:12.5px}
+.ph-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.ph-grid.best{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+.ph{position:relative;border:none;padding:0;aspect-ratio:4/3;border-radius:10px;background:#e5e7eb center/cover no-repeat;cursor:pointer;overflow:hidden}
+.ph:hover{filter:brightness(1.05);box-shadow:0 4px 14px rgba(0,0,0,.15)}
+.ph-by{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(transparent,rgba(0,0,0,.65));color:#fff;font-size:12px;padding:14px 8px 5px;text-align:left}
+.modal-box.wide{max-width:860px}
+.lb img{width:100%;max-height:70vh;object-fit:contain;border-radius:10px;background:#111}
+.lb-m{margin-top:8px}.lb-m p{margin:4px 0}.lb-m small{color:var(--muted)}

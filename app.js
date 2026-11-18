@@ -328,7 +328,7 @@ function renderDetails(route){
    <div class="tabs">${TABS.map(([k,l])=>`<button class="tab ${k===t?'on':''}" onclick="setTab('${a.id}','${k}')">${l}</button>`).join('')}</div>
    <div>${tabBody(a,t)}</div></div>`}).join('');
 }
-function setTab(id,t){tabState[id]=t;renderDetails(order())}
+function setTab(id,t){tabState[id]=t;renderDetails(order());if(window.afterRender)afterRender()}
 function goSOS(){const s=$('#sos');s.scrollIntoView({behavior:'smooth'});s.classList.remove('hl');void s.offsetWidth;s.classList.add('hl')}
 
 // ---------- Өдөр бүрийн хөтөлбөр ----------
@@ -486,7 +486,7 @@ function renderPlan(route){
 }
 
 // ---------- Бүртгэл, модаль ----------
-function openModal(html){$('#modalBody').innerHTML=html;$('#modal').classList.add('open')}
+function openModal(html){$('#modalBody').innerHTML=html;$('#modal .modal-box').classList.remove('wide');$('#modal').classList.add('open')}
 function closeModal(){$('#modal').classList.remove('open')}
 function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('show'),2600)}
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

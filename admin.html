@@ -7,7 +7,7 @@
 <title>Админ — Монгол аялал</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=202611181115">
+<link rel="stylesheet" href="style.css?v=202611181140">
 <style>
 header{padding:20px 0 18px}
 header h1{font-size:24px}
@@ -28,6 +28,8 @@ header h1{font-size:24px}
 .grant{display:flex;gap:8px;flex-wrap:wrap}
 .grant input{flex:1;min-width:200px}
 .grant input[type=number]{flex:none;width:90px;min-width:0}
+.adm-ph{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.adm-phc img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:10px}
 </style>
 </head>
 <body>
@@ -44,9 +46,9 @@ header h1{font-size:24px}
 </div>
 <div class="toast" id="toast"></div>
 
-<script src="config.js?v=202611181115"></script>
+<script src="config.js?v=202611181140"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="auth.js?v=202611181115"></script>
+<script src="auth.js?v=202611181140"></script>
 <script>
 const $=s=>document.querySelector(s);
 const cfg=window.APP_CONFIG||{};
@@ -92,14 +94,14 @@ async function load(){
  if(admin===null) admin=await Auth.isAdmin();
  if(!admin){$('#main').innerHTML='<div class="card empty">Энэ бүртгэлд админ эрх алга.</div>';return}
  const [{data:st,error:e1},{data:rows,error:e2},fbc,hsc,acc]=await Promise.all([Auth.stats(),
-  tab==='stories'?Auth.listStories({admin:true,limit:200}):tab==='camps'?Auth.listCampsAdmin():tab==='roads'?Auth.listRoads():tab==='reports'?Auth.listReports():
+  tab==='photos'?Auth.listPhotos({admin:true,limit:200}):tab==='stories'?Auth.listStories({admin:true,limit:200}):tab==='camps'?Auth.listCampsAdmin():tab==='roads'?Auth.listRoads():tab==='reports'?Auth.listReports():
   tab==='premium'?Auth.listPremium():tab==='feedback'?Auth.listFeedback():tab==='fuel'?Auth.fuelPrices():tab==='homestay'?Auth.listHomestaysAdmin():Auth.listRequests(tab==='all'?null:tab),
   Auth.countNewFeedback(),Auth.countPendingHomestays(),Auth.adminCounts()]);
  const fbNew=(fbc&&fbc.count)||0, hsNew=(hsc&&hsc.count)||0, cc=(acc&&acc.data)||{};
  if(e1||e2){$('#main').innerHTML=`<div class="card empty">Алдаа: ${esc((e1||e2).message)}</div>`;return}
  const s=st||{};
  const tabs=[['pending',`Хүлээгдэж буй (${s.pending||0})`],['approved','Батлагдсан'],['rejected','Татгалзсан'],['all','Бүгд'],['premium',`Премиум хэрэглэгчид (${s.premium||0})`],['feedback',`💬 Санал хүсэлт${fbNew?` (${fbNew} шинэ)`:''}`],['homestay',`🐎 Айл буудал${hsNew?` (${hsNew} шинэ)`:''}`],['fuel','⛽ Шатахууны үнэ'],
-  ['stories',`📖 Түүх${cc.stories?` (${cc.stories} шинэ)`:''}`],['camps',`🏕️ Кемп${cc.camps?` (${cc.camps} шинэ)`:''}`],['roads',`🚧 Замын мэдээ (${cc.roads||0})`],['reports',`🚩 Мэдээлэл${cc.reports?` (${cc.reports} шинэ)`:''}`]];
+  ['photos',`📷 Зураг${cc.photos?` (${cc.photos} шинэ)`:''}`],['stories',`📖 Түүх${cc.stories?` (${cc.stories} шинэ)`:''}`],['camps',`🏕️ Кемп${cc.camps?` (${cc.camps} шинэ)`:''}`],['roads',`🚧 Замын мэдээ (${cc.roads||0})`],['reports',`🚩 Мэдээлэл${cc.reports?` (${cc.reports} шинэ)`:''}`]];
  $('#main').innerHTML=`
   <section class="adm-stats">
    <div class="stat"><b>${fmt(s.users)}</b><span>Нийт хэрэглэгч</span></div>
@@ -109,7 +111,7 @@ async function load(){
   </section>
   <section class="card">
    <div class="tabs">${tabs.map(([k,l])=>`<button class="tab ${k===tab?'on':''}" onclick="setTab('${k}')">${l}</button>`).join('')}</div>
-   ${tab==='stories'?storyAdm(rows):tab==='camps'?campAdm(rows):tab==='roads'?roadAdm(rows):tab==='reports'?reportAdm(rows):tab==='premium'?premiumList(rows):tab==='feedback'?fbList(rows):tab==='fuel'?fuelList(rows):tab==='homestay'?hsList(rows):reqList(rows)}
+   ${tab==='photos'?photoAdm(rows):tab==='stories'?storyAdm(rows):tab==='camps'?campAdm(rows):tab==='roads'?roadAdm(rows):tab==='reports'?reportAdm(rows):tab==='premium'?premiumList(rows):tab==='feedback'?fbList(rows):tab==='fuel'?fuelList(rows):tab==='homestay'?hsList(rows):reqList(rows)}
   </section>
   <section class="card">
    <h2>Имэйлээр эрх өгөх</h2>
@@ -182,6 +184,19 @@ async function hsSet(id,st){
  load();
 }
 
+// ---- Зураг ----
+function photoAdm(rows){
+ if(!rows||!rows.length) return '<div class="empty">Зураг алга.</div>';
+ rows=rows.slice().sort((a,b)=>(a.status==='pending'?0:1)-(b.status==='pending'?0:1));
+ return '<div class="adm-ph">'+rows.map(p=>`<div class="adm-phc" style="${p.status==='rejected'?'opacity:.45':''}">
+  <a href="${esc(p.url)}" target="_blank"><img src="${esc(p.url)}" alt="" loading="lazy"></a>
+  <div class="meta">@${esc(p.author)} · ${esc(p.aimag)}${p.place?' · '+esc(p.place):''} · ❤️ ${p.likes}</div>
+  ${p.caption?`<div class="meta">${esc(p.caption)}</div>`:''}
+  <div class="act" style="justify-content:flex-start;margin-top:6px"><span class="st ${p.status==='approved'?'approved':p.status==='rejected'?'rejected':'pending'}">${STS[p.status]||p.status}</span>
+   ${p.status!=='approved'?`<button class="btn sm ok" onclick="phSet('${p.id}','approved')">✓</button>`:''}${p.status!=='rejected'?`<button class="btn sm no" onclick="phSet('${p.id}','rejected')">✕</button>`:''}<button class="btn sm no" onclick="phDel('${p.id}')">🗑️</button></div></div>`).join('')+'</div>';
+}
+async function phSet(id,st){const {error}=await Auth.setPhotoStatus(id,st);if(error){toast('Алдаа: '+error.message);return}load()}
+async function phDel(id){if(!confirm('Зургийг устгах уу?'))return;const {error}=await Auth.deletePhoto(id);if(error){toast(error.message);return}load()}
 // ---- Түүх ----
 const STS={draft:'Ноорог',pending:'Шинэ',approved:'Нийтэлсэн',rejected:'Татгалзсан'};
 function storyAdm(rows){
@@ -225,7 +240,7 @@ function roadAdm(rows){
 async function rdHide(id,h){const {error}=await Auth.hideRoad(id,h);if(error){toast(error.message);return}load()}
 async function rdDel(id){if(!confirm('Устгах уу?'))return;const {error}=await Auth.deleteRoad(id);if(error){toast(error.message);return}load()}
 // ---- Мэдээлэл (report) ----
-const RT={story:'📖 Түүх',comment:'💬 Сэтгэгдэл',camp:'🏕️ Кемп',review:'⭐ Үнэлгээ',road:'🚧 Замын мэдээ'};
+const RT={photo:'📷 Зураг',story:'📖 Түүх',comment:'💬 Сэтгэгдэл',camp:'🏕️ Кемп',review:'⭐ Үнэлгээ',road:'🚧 Замын мэдээ'};
 function reportAdm(rows){
  if(!rows||!rows.length) return '<div class="empty">Мэдээлэл алга.</div>';
  return rows.map(r=>`<div class="rq" style="${r.status==='done'?'opacity:.5':''}">
@@ -236,7 +251,7 @@ function reportAdm(rows){
 }
 async function rpDone(id){const {error}=await Auth.setReportStatus(id,'done');if(error){toast(error.message);return}load()}
 async function rpHide(type,tid,rid){
- const f=type==='comment'?Auth.hideComment:type==='review'?Auth.hideReview:type==='road'?(id=>Auth.hideRoad(id,true)):null;
+ const f=type==='photo'?(id=>Auth.setPhotoStatus(id,'rejected')):type==='comment'?Auth.hideComment:type==='review'?Auth.hideReview:type==='road'?(id=>Auth.hideRoad(id,true)):null;
  if(!f) return; const {error}=await f(tid); if(error){toast(error.message);return}
  await Auth.setReportStatus(rid,'done'); toast('Нууллаа'); load();
 }

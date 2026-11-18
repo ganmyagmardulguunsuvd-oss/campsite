@@ -172,6 +172,27 @@
     deleteReview(id) { return sb.from('camp_reviews').delete().eq('id', id) },
     hideReview(id) { return sb.from('camp_reviews').update({ hidden: true }).eq('id', id) },
 
+    // Зургууд (#3)
+    listPhotos(o = {}) {
+      let q = sb.from('photos').select('*').limit(o.limit || 60);
+      q = o.sort === 'top' ? q.order('likes', { ascending: false }).order('created_at', { ascending: false }) : q.order('created_at', { ascending: false });
+      if (o.mine) q = q.eq('user_id', state.user.id); else if (!o.admin) q = q.eq('status', 'approved');
+      if (o.status) q = q.eq('status', o.status);
+      if (o.aimag) q = q.eq('aimag', o.aimag);
+      if (o.since) q = q.gte('created_at', o.since);
+      return q;
+    },
+    addPhoto(row) { return sb.from('photos').insert({ ...row, own: true }).select('*').single() },
+    deletePhoto(id) { return sb.from('photos').delete().eq('id', id) },
+    setPhotoStatus(id, status) { return sb.from('photos').update({ status }).eq('id', id) },
+    async likedPhotos(ids) {
+      if (!state.user || !ids.length) return new Set();
+      const { data } = await sb.from('photo_likes').select('photo_id').eq('user_id', state.user.id).in('photo_id', ids);
+      return new Set((data || []).map(x => x.photo_id));
+    },
+    likePhoto(id) { return sb.from('photo_likes').insert({ photo_id: id }) },
+    unlikePhoto(id) { return sb.from('photo_likes').delete().eq('photo_id', id).eq('user_id', state.user.id) },
+
     // Админ: шинэ зүйлсийн тоо, мэдээлэл
     adminCounts() { return sb.rpc('admin_counts') },
     listReports(status) { let q = sb.from('reports').select('*').order('created_at', { ascending: false }).limit(300); if (status) q = q.eq('status', status); return q },
