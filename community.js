@@ -324,7 +324,7 @@ function storyCard(s, mine) {
     <span class="story-cv" ${s.cover ? `style="background-image:url('${safeUrl(s.cover)}')"` : ''}>${s.cover ? '' : '📖'}</span>
     <span class="story-b"><b>${esc(s.title)}</b>
       <small>${s.author ? '@' + esc(s.author) + ' · ' : ''}${new Date(s.created_at).toLocaleDateString()}${s.days ? ` · ${s.days} хоног` : ''}</small>
-      ${s.excerpt ? `<span class="story-ex">${esc(s.excerpt.replace(IMG_TOKEN, '').replace(/\s+/g, ' ').slice(0, 140))}…</span>` : ''}
+      ${(s.excerpt || s.body) ? `<span class="story-ex">${esc((s.excerpt || s.body).slice(0, 240).replace(IMG_TOKEN, '').replace(/\s+/g, ' ').slice(0, 140))}…</span>` : ''}
       <span class="story-f">${(s.aimags || []).slice(0, 3).map(id => `<span class="tag">${aimagName(id)}</span>`).join('')}${s.status === 'approved' ? `<span>❤️ ${s.likes}</span><span>💬 ${s.comments}</span>` : `<span class="st ${st[1]}">${st[0]}</span>`}</span></span></a>`;
 }
 VIEWS.stories = async (aid) => {

@@ -131,8 +131,12 @@
     hideRoad(id, hidden) { return sb.from('road_reports').update({ hidden }).eq('id', id) },
 
     // Аяллын түүх (#8)
-    listStories(o = {}) {
-      let q = sb.from('stories').select('id,author,title,cover,aimags,days,cost,likes,comments,status,created_at,excerpt')
+    async listStories(o = {}) {
+      const r = await Auth._listStories(o, 'excerpt');
+      return r.error && /excerpt/.test(r.error.message) ? Auth._listStories(o, 'body') : r;  // 07_excerpt.sql ажиллуулаагүй үед
+    },
+    _listStories(o, ex) {
+      let q = sb.from('stories').select('id,author,title,cover,aimags,days,cost,likes,comments,status,created_at,' + ex)
         .order('created_at', { ascending: false }).limit(o.limit || 60);
       if (o.mine) q = q.eq('user_id', state.user.id); else if (!o.admin) q = q.eq('status', 'approved');
       if (o.status) q = q.eq('status', o.status);

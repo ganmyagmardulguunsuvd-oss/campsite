@@ -7,7 +7,7 @@
 <title>Админ — Монгол аялал</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=202611181030">
+<link rel="stylesheet" href="style.css?v=202611181040">
 <style>
 header{padding:20px 0 18px}
 header h1{font-size:24px}
@@ -44,9 +44,9 @@ header h1{font-size:24px}
 </div>
 <div class="toast" id="toast"></div>
 
-<script src="config.js?v=202611181030"></script>
+<script src="config.js?v=202611181040"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="auth.js?v=202611181030"></script>
+<script src="auth.js?v=202611181040"></script>
 <script>
 const $=s=>document.querySelector(s);
 const cfg=window.APP_CONFIG||{};
@@ -190,7 +190,7 @@ function storyAdm(rows){
  return rows.map(r=>`<div class="rq" style="${r.status==='rejected'?'opacity:.5':''}">
   <div><div class="who"><a href="./#story/${r.id}" target="_blank">${esc(r.title)}</a> <span class="st ${r.status==='approved'?'approved':r.status==='rejected'?'rejected':'pending'}">${STS[r.status]}</span></div>
    <div class="meta">@${esc(r.author)} · ${dt(r.created_at)} · ❤️ ${r.likes} · 💬 ${r.comments}</div>
-   <div class="meta">${esc((r.excerpt||'').slice(0,160))}…</div></div>
+   <div class="meta">${esc((r.excerpt||r.body||'').slice(0,160))}…</div></div>
   <div class="act">${r.status!=='approved'?`<button class="btn sm ok" onclick="stSet('${r.id}','approved')">✓ Нийтлэх</button>`:''}${r.status!=='rejected'?`<button class="btn sm no" onclick="stReject('${r.id}')">✕</button>`:''}<button class="btn sm no" onclick="stDel('${r.id}')">🗑️</button></div></div>`).join('');
 }
 async function stSet(id,st,note){const {error}=await Auth.setStoryStatus(id,st,note);if(error){toast('Алдаа: '+error.message);return}toast('✅');load()}
