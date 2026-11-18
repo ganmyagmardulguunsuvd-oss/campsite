@@ -7,7 +7,7 @@
 <title>Админ — Монгол аялал</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=202611160008">
+<link rel="stylesheet" href="style.css?v=202611180902">
 <style>
 header{padding:20px 0 18px}
 header h1{font-size:24px}
@@ -44,9 +44,9 @@ header h1{font-size:24px}
 </div>
 <div class="toast" id="toast"></div>
 
-<script src="config.js?v=202611160008"></script>
+<script src="config.js?v=202611180902"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="auth.js?v=202611160008"></script>
+<script src="auth.js?v=202611180902"></script>
 <script>
 const $=s=>document.querySelector(s);
 const cfg=window.APP_CONFIG||{};
@@ -91,13 +91,13 @@ async function load(){
  if(!Auth.user){$('#main').innerHTML='<div class="card empty">Админ хэсэгт орохын тулд нэвтэрнэ үү.<br><br><button class="btn" onclick="openLogin()">Нэвтрэх</button></div>';return}
  if(admin===null) admin=await Auth.isAdmin();
  if(!admin){$('#main').innerHTML='<div class="card empty">Энэ бүртгэлд админ эрх алга.</div>';return}
- const [{data:st,error:e1},{data:rows,error:e2},fbc]=await Promise.all([Auth.stats(),
-  tab==='premium'?Auth.listPremium():tab==='feedback'?Auth.listFeedback():Auth.listRequests(tab==='all'?null:tab),
-  Auth.countNewFeedback()]);
- const fbNew=(fbc&&fbc.count)||0;
+ const [{data:st,error:e1},{data:rows,error:e2},fbc,hsc]=await Promise.all([Auth.stats(),
+  tab==='premium'?Auth.listPremium():tab==='feedback'?Auth.listFeedback():tab==='fuel'?Auth.fuelPrices():tab==='homestay'?Auth.listHomestaysAdmin():Auth.listRequests(tab==='all'?null:tab),
+  Auth.countNewFeedback(),Auth.countPendingHomestays()]);
+ const fbNew=(fbc&&fbc.count)||0, hsNew=(hsc&&hsc.count)||0;
  if(e1||e2){$('#main').innerHTML=`<div class="card empty">Алдаа: ${esc((e1||e2).message)}</div>`;return}
  const s=st||{};
- const tabs=[['pending',`Хүлээгдэж буй (${s.pending||0})`],['approved','Батлагдсан'],['rejected','Татгалзсан'],['all','Бүгд'],['premium',`Премиум хэрэглэгчид (${s.premium||0})`],['feedback',`💬 Санал хүсэлт${fbNew?` (${fbNew} шинэ)`:''}`]];
+ const tabs=[['pending',`Хүлээгдэж буй (${s.pending||0})`],['approved','Батлагдсан'],['rejected','Татгалзсан'],['all','Бүгд'],['premium',`Премиум хэрэглэгчид (${s.premium||0})`],['feedback',`💬 Санал хүсэлт${fbNew?` (${fbNew} шинэ)`:''}`],['homestay',`🐎 Айл буудал${hsNew?` (${hsNew} шинэ)`:''}`],['fuel','⛽ Шатахууны үнэ']];
  $('#main').innerHTML=`
   <section class="adm-stats">
    <div class="stat"><b>${fmt(s.users)}</b><span>Нийт хэрэглэгч</span></div>
@@ -107,7 +107,7 @@ async function load(){
   </section>
   <section class="card">
    <div class="tabs">${tabs.map(([k,l])=>`<button class="tab ${k===tab?'on':''}" onclick="setTab('${k}')">${l}</button>`).join('')}</div>
-   ${tab==='premium'?premiumList(rows):tab==='feedback'?fbList(rows):reqList(rows)}
+   ${tab==='premium'?premiumList(rows):tab==='feedback'?fbList(rows):tab==='fuel'?fuelList(rows):tab==='homestay'?hsList(rows):reqList(rows)}
   </section>
   <section class="card">
    <h2>Имэйлээр эрх өгөх</h2>
@@ -146,6 +146,36 @@ function fbList(rows){
 }
 async function fbStatus(id,st){
  const {error}=await Auth.setFeedbackStatus(id,st);
+ if(error){toast('Алдаа: '+error.message);return}
+ load();
+}
+function fuelList(rows){
+ if(!rows||!rows.length) return '<div class="empty">05_fuel_homestay.sql ажиллуулаагүй байна.</div>';
+ return `<p class="note">Үнийг өөрчлөөд «Хадгалах» дарна. Хэрэглэгчдэд шууд харагдана.</p>`+rows.map(f=>`<div class="rq"><div><div class="who">${esc(f.name)}</div><div class="meta">Шинэчилсэн: ${dt(f.updated_at)}</div></div>
+  <div class="act"><input type="number" id="fp-${f.code}" value="${f.price}" min="0" step="10" style="width:100px">₮ <button class="btn sm ok" onclick="saveFuel('${f.code}',this)">Хадгалах</button></div></div>`).join('');
+}
+async function saveFuel(code,btn){
+ const v=Math.round(+$('#fp-'+code).value);
+ if(!(v>0)){toast('Үнэ буруу');return}
+ btn.disabled=true;
+ const {error}=await Auth.updateFuel(code,v);
+ btn.disabled=false;
+ if(error){toast('Алдаа: '+error.message);return}
+ toast('✅ Хадгаллаа');load();
+}
+const HSO={stay:'🛏️ Хонох',airag:'🥛 Айраг',dairy:'🧀 Цагаан идээ',meat:'🥩 Мах',craft:'🧶 Гар урлал',horse:'🐎 Морь/тэмээ'};
+function hsList(rows){
+ if(!rows||!rows.length) return '<div class="empty">Айл буудлын санал алга.</div>';
+ return rows.map(h=>`<div class="rq" style="${h.status==='rejected'?'opacity:.5':''}">
+  <div><div class="who">${esc(h.name)} <span class="st ${h.status==='approved'?'approved':h.status==='rejected'?'rejected':'pending'}">${h.status==='approved'?'Нийтэлсэн':h.status==='rejected'?'Татгалзсан':'Шинэ'}</span></div>
+   <div class="meta">${esc(h.aimag)}${h.soum?' · '+esc(h.soum):''}${h.phone?' · 📞 '+esc(h.phone):''}${h.fb?` · <a href="${esc(h.fb)}" target="_blank" rel="noopener nofollow">FB</a>`:''} · ${dt(h.created_at)}</div>
+   <div class="meta">${(h.offers||[]).map(o=>HSO[o]||esc(o)).join(', ')}${h.season?' · '+esc(h.season):''}</div>
+   ${h.note?`<div style="white-space:pre-wrap;margin-top:4px">${esc(h.note)}</div>`:''}</div>
+  <div class="act">${h.status!=='approved'?`<button class="btn sm ok" onclick="hsSet('${h.id}','approved')">✓ Нийтлэх</button>`:''}${h.status!=='rejected'?`<button class="btn sm no" onclick="hsSet('${h.id}','rejected')">✕</button>`:''}</div>
+ </div>`).join('');
+}
+async function hsSet(id,st){
+ const {error}=await Auth.setHomestayStatus(id,st);
  if(error){toast('Алдаа: '+error.message);return}
  load();
 }

@@ -296,7 +296,7 @@ function renderDetails(route){
  $('#details').innerHTML=route.map((a,i)=>{const t=tabState[a.id]||'places';
   return `<div class="card aimag" id="a-${a.id}">
    <div class="aimag-head"><span class="dot" style="width:30px;height:30px;font-size:14px">${i+1}</span><h3>${a.n} аймаг</h3>
-   <span class="meta">Төв: ${a.c} · УБ-аас ${a.km} км · ${a.reg}</span></div>
+   <span class="meta">Төв: ${a.c} · УБ-аас ${a.km} км · ${a.reg}<span class="wx-now" data-a="${a.id}"></span></span></div>
    <div class="tabs">${TABS.map(([k,l])=>`<button class="tab ${k===t?'on':''}" onclick="setTab('${a.id}','${k}')">${l}</button>`).join('')}</div>
    <div>${tabBody(a,t)}</div></div>`}).join('');
 }
@@ -428,6 +428,7 @@ function dayCard(d,i){
     ${d.skipped&&d.skipped.length?`<div class="skipped">⚠️ Суудлын машинтай тул хасагдсан (4x4 хэрэгтэй): ${d.skipped.map(p=>p[0]).join(', ')}</div>`:''}
     ${d.offSeason&&d.offSeason.length?`<div class="skipped">${SEASONS[curSeason()].i} ${SEASONS[curSeason()].n}ийн улиралд тохиромжгүй тул хасагдсан: ${d.offSeason.map(p=>p[0]+' ('+p[4]+')').join(', ')}</div>`:''}
     <div class="sleep">🛏️ <b>Хоноглох:</b> ${d.sleep}</div>
+    <div class="wx" data-day="${i}"></div>
    </div></div>`;
 }
 
@@ -636,7 +637,7 @@ async function checkStatus(){
  toast('Одоогоор шалгагдаж байна');
 }
 
-function tripPayload(){return{sel,car:$('#car').value,price:$('#price').value,perday:$('#perday').value,sdays:$('#sdays').value,start:$('#start').value,season:$('#season').value,ret:$('#ret').checked}}
+function tripPayload(){return{sel,car:$('#car').value,price:$('#price').value,perday:$('#perday').value,sdays:$('#sdays').value,start:$('#start').value,season:$('#season').value,fuel:$('#fuel')?$('#fuel').value:'',ret:$('#ret').checked}}
 async function saveTrip(){
  if(!Auth.user){openLogin();return}
  if(!sel.length) return;
@@ -655,7 +656,7 @@ async function openTrips(){
 function loadTrip(i){
  const p=window._trips[i].payload||{};
  sel=(p.sel||[]).filter(id=>A.some(a=>a.id===id));
- [['car',p.car],['price',p.price],['perday',p.perday],['sdays',p.sdays],['start',p.start],['season',p.season]].forEach(([id,v])=>{if(v!=null&&v!=='')$('#'+id).value=v});
+ [['car',p.car],['price',p.price],['perday',p.perday],['sdays',p.sdays],['start',p.start],['season',p.season],['fuel',p.fuel]].forEach(([id,v])=>{if(v!=null&&v!=='')$('#'+id).value=v});
  $('#ret').checked=p.ret!==false;
  save();closeModal();render();toast('Аялал нээгдлээ');
  $('#planbox').scrollIntoView({behavior:'smooth'});
@@ -748,6 +749,7 @@ function printPlan(){
   <div class="pr-sos"><div><b>101</b>Гал</div><div><b>102</b>Цагдаа</div><div><b>103</b>Түргэн тусламж</div><div><b>105</b>Онцгой байдал</div></div>
   <ul class="pr-check"><li>☐ Нөөц дугуй, домкрат, трос, компрессор</li><li>☐ Иргэний ба жолооны үнэмлэх, даатгал</li><li>☐ Ус (хүнд өдөрт 3 л), хуурай хүнс, дулаан хувцас</li><li>☐ Power bank, офлайн газрын зураг</li><li>☐ Анхны тусламжийн цүнх</li><li>☐ Маршрут, буцах өдрөө гэр бүлдээ хэлсэн</li></ul>
   <div class="pr-foot">Монгол аялал · ${location.host}${location.pathname} · by Dulguunsuvd Ganmyagmar — Зай, цаг ойролцоо утга.</div>`;
+ if(window.wxFillPlan)wxFillPlan();
  const done=()=>{document.body.classList.remove('printing');window.removeEventListener('afterprint',done)};
  window.addEventListener('afterprint',done);
  document.body.classList.add('printing');
@@ -768,7 +770,7 @@ function renderFooter(){
  const y=$('#yr'); if(y) y.textContent=new Date().getFullYear();
 }
 
-function render(){renderChips();const r=order();renderMap(r);renderSummary(r);renderPlan(r);renderDetails(r);renderAcct()}
+function render(){renderChips();const r=order();renderMap(r);renderSummary(r);renderPlan(r);renderDetails(r);renderAcct();if(window.afterRender)afterRender()}
 if(window.Auth) Auth.onChange(()=>{render();if(Auth.recovery)openNewPassword();if(wantTrial&&Auth.user&&Auth.ready){wantTrial=false;startTrial()}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
 ['car','price','perday','ret','sdays','start','season'].forEach(id=>$('#'+id).addEventListener('input',render));

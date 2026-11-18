@@ -93,6 +93,22 @@
     countNewFeedback() { return sb.from('feedback').select('id', { count: 'exact', head: true }).eq('status', 'new') },
     setFeedbackStatus(id, status) { return sb.from('feedback').update({ status }).eq('id', id) },
 
+    // Шатахууны үнэ
+    fuelPrices() { return sb.from('fuel_prices').select('code,name,price,sort,updated_at').order('sort') },
+    updateFuel(code, price) { return sb.from('fuel_prices').update({ price, updated_at: new Date().toISOString() }).eq('code', code) },
+
+    // Айл буудал
+    listHomestays(aimag) { return sb.from('homestays').select('*').eq('aimag', aimag).order('created_at', { ascending: false }) },
+    listHomestaysAdmin(status) {
+      let q = sb.from('homestays').select('*').order('created_at', { ascending: false }).limit(300);
+      if (status) q = q.eq('status', status);
+      return q;
+    },
+    countPendingHomestays() { return sb.from('homestays').select('id', { count: 'exact', head: true }).eq('status', 'pending') },
+    submitHomestay(row) { return sb.from('homestays').insert({ ...row, submitted_by: state.user.id }) },
+    setHomestayStatus(id, status) { return sb.from('homestays').update({ status }).eq('id', id) },
+    deleteHomestay(id) { return sb.from('homestays').delete().eq('id', id) },
+
     // Админ
     async isAdmin() { if (!sb || !state.user) return false; const { data } = await sb.rpc('is_admin'); return !!data },
     listRequests(status) {
