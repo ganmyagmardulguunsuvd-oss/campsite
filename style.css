@@ -502,3 +502,12 @@ main .card{background-image:var(--corner-tr);background-repeat:no-repeat;backgro
 .site-foot .foot-copy{position:relative;padding-top:68px;text-align:center}
 .site-foot .foot-copy::before{content:'';position:absolute;left:50%;top:10px;transform:translateX(-50%);width:62px;height:52px;background:var(--ulzii) center/contain no-repeat;opacity:.8}
 .empty::before{content:'';display:block;width:70px;height:60px;margin:0 auto 10px;background:var(--ulzii-soft) center/contain no-repeat;opacity:.45}
+
+/* 2026-11-25: дөрвөлжин торон хээ, өлзий-үүлэн тэмдгийг хассан */
+header{background:linear-gradient(160deg,#18346a 0%,#132a55 55%,#0d1f42 100%)}
+header .wrap::after{display:none}
+header h1,header p,.byline{max-width:760px}
+.site-foot{background:linear-gradient(180deg,#132a55,#0d1f42)}
+.site-foot .foot-copy{padding-top:14px}
+.site-foot .foot-copy::before{display:none}
+.empty::before{display:none}
