@@ -373,3 +373,111 @@ a.copy{text-decoration:none;color:var(--ink);display:inline-block}
 .modal-box.wide{max-width:860px}
 .lb img{width:100%;max-height:70vh;object-fit:contain;border-radius:10px;background:#111}
 .lb-m{margin-top:8px}.lb-m p{margin:4px 0}.lb-m small{color:var(--muted)}
+
+/* =====================================================================
+   МОНГОЛ ХЭЭТЭЙ ДИЗАЙН (2026-11-25) — хөх, улаан, алтан өнгө, алхан хээ
+   ===================================================================== */
+@font-face{font-family:Philosopher;font-style:normal;font-weight:700;font-display:swap;src:url(fonts/philosopher-cyrillic-ext-700-normal.woff2) format('woff2');unicode-range:U+0460-052F,U+1C80-1C8A,U+20B4,U+2DE0-2DFF,U+A640-A69F,U+FE2E-FE2F}
+@font-face{font-family:Philosopher;font-style:normal;font-weight:700;font-display:swap;src:url(fonts/philosopher-cyrillic-700-normal.woff2) format('woff2');unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:Philosopher;font-style:normal;font-weight:700;font-display:swap;src:url(fonts/philosopher-latin-700-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+:root{
+  --bg:#f6eedd; --card:#fffaf0; --ink:#1b2238; --muted:#6e6555; --line:#e3cfa4;
+  --sky:#1a3a72; --sky2:#e8eef9; --steppe:#2e7a4e; --steppe2:#e3f2e8;
+  --sun:#b5262c; --sun2:#fbe9e4; --red:#c62828; --red2:#fbe4e1;
+  --gold:#c8962b; --gold2:#f7ecd0; --navy:#132a55; --navy2:#0d1f42;
+  --head:Philosopher,Rubik,Georgia,serif;
+  --hee:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='14'%3E%3Crect width='18' height='14' fill='%23b5262c'/%3E%3Cpath d='M0 11.5H18M14 11.5V2.5H4.5V8.5H10V5.5' fill='none' stroke='%23e6b955' stroke-width='1.8'/%3E%3C/svg%3E");
+  --hee-blue:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='14'%3E%3Crect width='18' height='14' fill='%23132a55'/%3E%3Cpath d='M0 11.5H18M14 11.5V2.5H4.5V8.5H10V5.5' fill='none' stroke='%23c8962b' stroke-width='1.8'/%3E%3C/svg%3E");
+  --lattice:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Cg fill='none' stroke='%23e6b955' stroke-opacity='.16' stroke-width='1.2'%3E%3Cpath d='M22 3L41 22L22 41L3 22Z'/%3E%3Cpath d='M22 14L30 22L22 30L14 22Z'/%3E%3C/g%3E%3Ccircle cx='22' cy='22' r='1.6' fill='%23e6b955' fill-opacity='.35'/%3E%3C/svg%3E");
+  --dots:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30'%3E%3Cpath d='M15 11L19 15L15 19L11 15Z' fill='%23c8962b' fill-opacity='.07'/%3E%3C/svg%3E");
+}
+body{background:var(--bg) var(--dots);color:var(--ink)}
+h1,h2,h3,.foot-brand,.modal-box h3,.story-page h1,.vh h2{font-family:var(--head);letter-spacing:.2px}
+a{color:var(--sky)}
+
+/* Толгой */
+header{background:var(--navy) var(--lattice);position:relative;padding:30px 0 40px;border-top:5px solid var(--sun)}
+header::after{content:'';position:absolute;left:0;right:0;bottom:0;height:14px;background:var(--hee) repeat-x;border-top:2px solid var(--gold)}
+header h1{font-size:clamp(26px,4.4vw,40px);color:#fff;text-shadow:0 2px 0 rgba(0,0,0,.25)}
+header h1::after{content:'';display:block;width:84px;height:3px;margin-top:10px;background:linear-gradient(90deg,var(--gold),transparent)}
+header p{color:#dfe6f3}
+.byline b{background:none;-webkit-background-clip:initial;background-clip:initial;color:#e6b955}
+.acct button{border-color:rgba(230,185,85,.55)}
+.acct button.solid{background:var(--gold);border-color:var(--gold);color:var(--navy2)}
+
+/* Цэс */
+.topnav{background:var(--navy2);box-shadow:0 3px 0 var(--gold),0 6px 14px rgba(0,0,0,.15)}
+.topnav a{color:#cfd9ec}
+.topnav a:hover{background:rgba(230,185,85,.14);color:#fff}
+.topnav a.on{background:var(--gold);color:var(--navy2);font-weight:600}
+
+/* Карт, гарчиг */
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;position:relative;box-shadow:0 1px 0 #fff inset,0 4px 14px rgba(120,90,30,.06)}
+main .card::before{content:'';position:absolute;left:14px;right:14px;top:-1px;height:4px;border-radius:0 0 4px 4px;
+  background:linear-gradient(90deg,var(--sun) 0 33.3%,var(--sky) 33.3% 66.6%,var(--sun) 66.6%)}
+h2{color:var(--navy)}
+h2 small,h2 .sub{font-family:Rubik,sans-serif;font-weight:400}
+h2 .num{background:var(--sun);box-shadow:0 0 0 2px var(--card),0 0 0 4px var(--gold);font-family:Rubik,sans-serif}
+.region h3{color:var(--navy);font-family:Rubik,sans-serif;font-weight:600}
+.region h3::before{content:'◆';color:var(--gold);margin-right:6px;font-size:11px;vertical-align:1px}
+
+/* Товч, чип, таб */
+.btn{background:var(--sun);border-radius:10px;box-shadow:0 2px 0 #7f171c;transition:.15s}
+.btn:hover{background:#9f1f25}
+.btn:active{transform:translateY(1px);box-shadow:none}
+.btn.ghost{background:transparent;color:var(--navy);border:1.5px solid var(--gold);box-shadow:none}
+.btn.ghost:hover{background:var(--gold2)}
+.chip{border-color:var(--line);background:#fffdf7}
+.chip:hover{border-color:var(--gold)}
+.chip.on{background:var(--navy);border-color:var(--navy);color:#fff;box-shadow:inset 0 -2px 0 var(--gold)}
+.tab{background:var(--gold2)}
+.tab.on{background:var(--navy);color:#fff;box-shadow:inset 0 -2px 0 var(--gold)}
+.copy{border-color:var(--line)}
+.copy.on{background:var(--gold2);border-color:var(--gold);color:#7a5410}
+.opts select,.opts input[type=number],.field{border-color:var(--line)}
+.opts select:focus,.field:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(200,150,43,.2)}
+.warn{background:var(--gold2);border-left-color:var(--gold)}
+.guide-cta{background:linear-gradient(90deg,var(--gold2),#fffaf0);border-color:var(--gold);color:var(--navy)}
+.guide-cta:hover{background:var(--gold2)}
+
+/* Өдрийн хөтөлбөр */
+.day{border-color:var(--line);background:#fffdf8}
+.day-head{background:var(--sky2);border-bottom:1px solid var(--line)}
+.day-no{color:var(--navy)}
+.day.home .day-head{background:var(--gold2)}.day.home .day-no{color:#8a6216}
+
+/* Тест, санал */
+.qz-card{border-color:transparent;box-shadow:0 2px 10px rgba(80,60,20,.12)}
+.qz-card.on{border-color:var(--gold)}
+.qz-check{background:var(--gold);color:var(--navy2)}
+.qz-who{background:var(--gold2)}
+.sg-card{border-color:var(--line);background:#fffdf8}
+.sg-n{background:var(--navy);box-shadow:0 0 0 2px var(--gold)}
+.hp-msg.me{background:var(--navy)}
+.hp-msg.bot{background:var(--gold2)}
+
+/* Кемп, түүх, зураг, замын мэдээ */
+.camp,.story,.road{border-color:var(--line);background:#fffdf8}
+.camp.feat{border-color:var(--gold);box-shadow:0 0 0 2px var(--gold2)}
+.fbadge{background:var(--gold);color:var(--navy2)}
+.road{border-left-color:var(--sun)}
+.story-cv{background:linear-gradient(135deg,var(--sky2),var(--gold2)) center/cover}
+.story-route{background:var(--sky2)}
+
+/* Модаль, мэдэгдэл */
+.modal{background:rgba(13,31,66,.55)}
+.modal-box{border-top:5px solid var(--sun);background:var(--card)}
+.modal-box::before{content:'';position:absolute;left:0;right:0;top:0;height:8px;background:var(--hee-blue) repeat-x;opacity:.9}
+.modal-box h3{color:var(--navy);margin-top:6px}
+.toast{background:var(--navy2);border:1px solid var(--gold)}
+
+/* Яаралтай тусламж, санал хүсэлт товч */
+.sos-btn{background:var(--red);box-shadow:0 0 0 3px #fff,0 6px 20px rgba(198,40,40,.45)}
+.fb-btn{border-color:var(--gold);background:#fffaf0}
+
+/* Хөл */
+.site-foot{background:var(--navy) var(--lattice);color:#d4dceb;position:relative;padding-top:44px}
+.site-foot::before{content:'';position:absolute;left:0;right:0;top:0;height:14px;background:var(--hee) repeat-x;border-bottom:2px solid var(--gold)}
+.site-foot a{color:#e6b955}
+.foot-by b{color:#e6b955}
+.foot-copy{border-top-color:rgba(230,185,85,.3)}
