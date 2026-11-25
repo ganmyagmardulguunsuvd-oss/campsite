@@ -63,11 +63,14 @@ function aimagFit(a, p) {
   if (p.car === 'none' && !(a.rail || a.air) && fromKm(a) > 500) s -= 2;
   if (p.kids && fromKm(a) > 700) s -= 1;
   if (eventsFor(a, se).some(e => e.a !== '*')) s += 0.8;
+  // Уур амьсгал: чилл — рашаан, нуур, ойрхон; адал явдалт — оргил, говь, нүүдэлчин соёл
+  if (p.vibe === 'chill') { s += ((CATS.hotspring.w[a.id] || 0) + (CATS.lake.w[a.id] || 0)) * 0.45; if (fromKm(a) > 800) s -= 1.2 }
+  if (p.vibe === 'active') s += ((CATS.snow.w[a.id] || 0) + (CATS.desert.w[a.id] || 0) + (CATS.nomad.w[a.id] || 0)) * 0.35;
   if (p.must && p.must.includes(a.id)) s += 6;
   return { s, good };
 }
 function tripOf(ids, p) {
-  const perday = +($('#perday') && $('#perday').value) || 400, ret = true;
+  const perday = p.vibe === 'chill' ? 300 : (+($('#perday') && $('#perday').value) || 400), ret = true;
   let rest = ids.map(byId), cur = START, out = [];
   while (rest.length) { rest.sort((x, y) => road(cur, x) - road(cur, y)); cur = rest.shift(); out.push(cur) }
   let km = 0, drive = 0, prev = START;
@@ -108,7 +111,9 @@ function suggest(p, n = 3) {
     // Нэмэлт аймаг бүр оноогоо «зарах» ёстой
     const weakest = Math.min(...t.fits.map(f => f.s));
     let score = fit - t.drive * 0.9 - (ids.length > 1 && weakest < 1.5 ? 2 : 0);
-    if (p.days) score -= Math.max(0, p.days - t.days) * 0.35;
+    if (p.days) score -= Math.max(0, p.days - t.days) * (p.vibe === 'chill' ? 0.1 : 0.35);
+    if (p.vibe === 'chill') score -= t.drive * 0.5 + (ids.length - 1) * 0.8;
+    if (p.vibe === 'active') score += (ids.length - 1) * 0.5;
     t.score = score; t.ids = ids;
     scored.push(t);
   }
@@ -128,7 +133,7 @@ function themeOf(t, p) {
   return best;
 }
 function highlights(t, p) {
-  const cats = p.cats.length ? p.cats : null, out = [];
+  const cats = p.cats.length ? (p.vibe === 'chill' ? [...new Set([...p.cats, 'hotspring', 'lake'])] : p.cats) : (p.vibe === 'chill' ? ['hotspring', 'lake', 'forest'] : null), out = [];
   t.route.forEach((a, i) => t.fits[i].good.forEach(x => {
     const txt = x[0] + ' ' + x[1];
     if (!cats || cats.some(c => CATS[c].re.test(txt))) out.push(`${x[0]} <small>(${a.n})</small>`);
@@ -142,14 +147,22 @@ function suggestionCard(t, p, i) {
     <div class="sg-head"><span class="sg-n">${i + 1}</span><div><b>${th.i} ${t.route.map(a => a.n).join(' → ')}</b>
       <div class="sg-meta">${t.days} өдөр · ~${fmt(t.km)} км${t.fuel ? ` · шатахуун ~${fmt(t.fuel)}₮${ppl > 1 ? ` (нэг хүнд ~${fmt(Math.round(t.fuel / ppl / 1000) * 1000)}₮)` : ''}` : ''}</div></div></div>
     ${hl.length ? `<ul class="sg-hl">${hl.map(h => `<li>${h}</li>`).join('')}</ul>` : ''}
-    <button class="btn wide" onclick='applySuggestion(${JSON.stringify(t.ids)},${JSON.stringify({ car: p.car, season: p.season || null, sd: t.sd })})'>🗺️ Энэ маршрутаар төлөвлөх</button>
+    <button class="btn wide" onclick='applySuggestion(${JSON.stringify(t.ids)},${JSON.stringify({ car: p.car, season: p.season || null, sd: t.sd, perday: p.vibe === 'chill' ? 300 : null })})'>🗺️ Энэ маршрутаар төлөвлөх</button>
   </div>`;
+}
+function tipsFor(p) {
+  const t = [];
+  if (p.who === 'solo') t.push('🧘 <b>Ганцаараа аялахад:</b> маршрутаа ойр дотныхондоо урьдчилан хэлж, өдөр бүр «📍 Би энд байна»-аар байршлаа илгээж байгаарай. Сүлжээгүй хэсэгт орохоосоо өмнө мэдэгдээрэй. Кемп, айл буудалд хоновол илүү аюулгүй.');
+  if (p.vibe === 'chill') t.push('😌 <b>Чилл аялалд:</b> өдөрт 250–300 км-ээс илүү бүү яв, нэг газраа 2 хоновол жинхэнэ амарна. Рашаан, нуурын эргийн кемпийг урьдчилан захиалаарай.');
+  if (p.who === 'family') t.push('👨‍👩‍👧 <b>Гэр бүлээрээ:</b> хүүхэдтэй бол 2–3 цаг тутам зогсож амраарай. Эм, ус, хөнжлөө авч яваарай.');
+  return t.length ? `<div class="qz-tips">${t.map(x => `<p>${x}</p>`).join('')}</div>` : '';
 }
 function applySuggestion(ids, o) {
   sel = ids.filter(id => A.some(a => a.id === id)); save();
   if (o && o.car === 'sedan') $('#car').value = '9'; else if (o && o.car === '4x4') $('#car').value = '13';
   if (o && o.season) $('#season').value = o.season;
   if (o && o.sd) $('#sdays').value = o.sd;
+  if (o && o.perday && $('#perday')) $('#perday').value = o.perday;
   $('#ret').checked = true;
   if (window.onCarChangeFuel) onCarChangeFuel();
   if (location.hash && location.hash !== '#') location.hash = '';
@@ -159,7 +172,9 @@ function applySuggestion(ids, o) {
 }
 
 // ---------- Зургаар сонгох тест ----------
-const Q = { step: 0, cats: [], days: null, people: 2, season: null, car: '4x4', budget: null };
+const Q = { step: 0, cats: [], days: null, who: 'couple', vibe: 'mix', season: null, car: '4x4', budget: null };
+const WHO = { solo: [1, '🧘 Ганцаараа'], couple: [2, '💑 Хосоороо'], friends: [4, '👯 Найзуудтайгаа'], family: [4, '👨‍👩‍👧 Гэр бүлээрээ'] };
+const VIBE = { chill: '😌 Тайван, чилл', active: '🧗 Адал явдалт', mix: '⚖️ Аль аль нь' };
 function photoCard(c, on) {
   const ph = CAT_PHOTO[c] || {}, C = CATS[c];
   return `<button type="button" class="qz-card ${on ? 'on' : ''}" onclick="qzToggle('${c}')" aria-pressed="${on}">
@@ -189,21 +204,24 @@ function renderQuiz() {
     body = `<h2>🎯 Хаашаа явах вэ?</h2><p class="qz-q">3/3. Аяллынхаа талаар</p>
       <div class="qz-form">
         <label>Хэдэн хоног?</label>${chipRow('days', [[3, '2–3 хоног'], [5, '4–5 хоног'], [8, '6–8 хоног'], [14, '9+ хоног'], [null, 'Хамаагүй']])}
-        <label>Хэдэн хүн?</label>${chipRow('people', [[1, '1'], [2, '2'], [4, '3–4'], [6, '5+']])}
+        <label>Хэнтэй явах вэ?</label>${chipRow('who', Object.entries(WHO).map(([k, v]) => [k, v[1]]))}
+        <label>Ямар уур амьсгалтай аялал хүсэж байна?</label>${chipRow('vibe', Object.entries(VIBE))}
+        ${Q.vibe === 'chill' ? '<p class="note" style="margin:6px 0 0">😌 Чилл аялалд зам бага, нэг газар удаан амрах, рашаан, нуурын эрэг давамгай маршрут санал болгоно.</p>' : ''}
         <label>Хэзээ?</label>${chipRow('season', [[null, 'Удахгүй'], ['summer', '☀️ Зун'], ['autumn', '🍂 Намар'], ['winter', '❄️ Өвөл'], ['spring', '🌱 Хавар']])}
         <label>Ямар машинаар?</label>${chipRow('car', [['sedan', '🚗 Суудлын'], ['4x4', '🚙 Жийп / 4x4'], ['none', '🚌 Машингүй']])}
         <label>Шатахууны төсөв</label>${chipRow('budget', [[300000, '300 мянга хүртэл'], [600000, '600 мянга хүртэл'], [1000000, '1 сая хүртэл'], [null, 'Хамаагүй']])}
       </div>
       <div class="qz-nav"><button class="btn ghost" onclick="qzGo(-1)">← Буцах</button><button class="btn" onclick="qzGo(1)">✨ Санал харах</button></div>`;
   } else {
-    const p = { cats: Q.cats, days: Q.days, people: Q.people, season: Q.season, car: Q.car, budget: Q.car === 'none' ? null : Q.budget };
+    const p = { cats: Q.cats, days: Q.days, people: WHO[Q.who][0], kids: Q.who === 'family', who: Q.who, vibe: Q.vibe, season: Q.season, car: Q.car, budget: Q.car === 'none' ? null : Q.budget };
     const res = suggest(p);
     const main = Q.cats.length ? CATS[Q.cats[0]] : null;
-    window._qzWho = main ? main.who : '🧭 Бүх юмыг үзэх дуртай аялагч';
+    window._qzWho = (main ? main.who : '🧭 Бүх юмыг үзэх дуртай аялагч') + (Q.vibe === 'chill' ? ' · 😌 чилл' : Q.vibe === 'active' ? ' · 🧗 адал явдалт' : '') + (Q.who === 'solo' ? ' · 🧘 ганцаараа' : '');
     body = `<h2>✨ Танд санал болгох аялал</h2>
       <div class="qz-who">Таны аяллын төрөл: <b>${window._qzWho}</b> <button class="copy" onclick="qzShare()">📤 Хуваалцах</button></div>
       ${res.length ? `<div class="sg-list">${res.map((t, i) => suggestionCard(t, p, i)).join('')}</div>`
         : '<div class="warn">Энэ нөхцөлд тохирох маршрут олдсонгүй. Хоног эсвэл төсвөө нэмээд үзээрэй.</div>'}
+      ${tipsFor(p)}
       <p class="note">Хоног, зай, шатахуун ойролцоо тооцоо. «Энэ маршрутаар төлөвлөх» дарахад өдөр бүрийн хөтөлбөр гарна.</p>
       <div class="qz-nav"><button class="btn ghost" onclick="qzReset()">↺ Дахин эхлэх</button><button class="btn ghost" onclick="qzRandom()">🎲 Санамсаргүй аялал</button></div>`;
   }
@@ -215,7 +233,7 @@ function qzGo(d) {
   if (d > 0 && Q.step === 0 && !Q.cats.some(c => QUIZ_STEPS[0].includes(c))) { toast('Дор хаяж нэг зураг сонгоорой'); return }
   Q.step = Math.max(0, Math.min(3, Q.step + d)); renderQuiz(); window.scrollTo({ top: 0, behavior: 'smooth' });
 }
-function qzReset() { Object.assign(Q, { step: 0, cats: [], days: null, people: 2, season: null, car: '4x4', budget: null }); renderQuiz() }
+function qzReset() { Object.assign(Q, { step: 0, cats: [], days: null, who: 'couple', vibe: 'mix', season: null, car: '4x4', budget: null }); renderQuiz() }
 function qzRandom() {
   const keys = Object.keys(CATS), pick = keys.sort(() => Math.random() - .5).slice(0, 2);
   Object.assign(Q, { step: 3, cats: pick, days: [3, 5, 8][Math.floor(Math.random() * 3)] });
@@ -241,7 +259,10 @@ function parseRequest(t) {
   if ((m = s.match(/(\d{1,2})\s*(?:-|–|аас|оос)?\s*(?:\d{1,2}\s*)?(хоног|өдөр|шөнө)/))) p.days = +m[1] + (m[2] === 'шөнө' ? 1 : 0);
   else if (/долоо хоног/.test(s)) p.days = 7; else if (/амралтын өдөр|бямба|weekend/.test(s)) p.days = 2;
   if ((m = s.match(/(\d{1,2})\s*(хүн)/))) p.people = +m[1];
-  if (/гэр бүл|хүүхэд/.test(s)) { p.kids = /хүүхэд/.test(s); p.people = p.people || 4 }
+  if (/гэр бүл|хүүхэд/.test(s)) { p.kids = /хүүхэд/.test(s); p.people = p.people || 4; p.who = 'family' }
+  if (/ганцаараа|ганцаар|соло|solo/.test(s)) { p.people = 1; p.who = 'solo' }
+  if (/чилл|chill|тайван|амрах|амармаар|амраах|залхуу/.test(s)) p.vibe = 'chill';
+  else if (/адал|экстрим|авир|идэвхтэй/.test(s)) p.vibe = 'active';
   Object.keys(KW).forEach(c => { if (KW[c].test(s)) p.cats.push(c) });
   if (/өвөл|өвлийн|цас/.test(s)) p.season = 'winter'; else if (/хавар/.test(s)) p.season = 'spring';
   else if (/намар/.test(s)) p.season = 'autumn'; else if (/зун|наадам/.test(s)) p.season = 'summer';
@@ -266,7 +287,8 @@ function parseRequest(t) {
 function understood(p) {
   const bits = [];
   if (p.days) bits.push(`${p.days} хоног`);
-  if (p.people) bits.push(`${p.people} хүн`);
+  if (p.who === 'solo') bits.push('🧘 ганцаараа'); else if (p.people) bits.push(`${p.people} хүн`);
+  if (p.vibe) bits.push(VIBE[p.vibe].toLowerCase());
   if (p.cats.length) bits.push(p.cats.map(c => CATS[c].i + ' ' + CATS[c].n.toLowerCase()).join(', '));
   if (p.must.length) bits.push(p.must.map(id => byId(id).n).join(', '));
   if (p.season) bits.push(SEASONS[p.season].i + ' ' + SEASONS[p.season].n.toLowerCase());
@@ -279,7 +301,7 @@ function helperAnswer(text) {
   const p = parseRequest(text);
   p.car = p.car || '4x4';
   const bits = understood(p);
-  if (!p.cats.length && !p.must.length && !p.days && !p.season) {
+  if (!p.cats.length && !p.must.length && !p.days && !p.season && !p.vibe) {
     return `Ямар аялал хүсэж байгаагаа арай дэлгэрэнгүй бичээрэй. Жишээ нь хэдэн хоног, ямар газар (нуур, говь, ой, түүхэн газар), ямар машинтай, хэзээ гэх мэт.
       <div class="hp-sugg">${['3 хоног нуур үзмээр байна', 'Говь руу 5 хоног жийптэй', 'Өвөл хаашаа явах вэ?', 'Гэр бүлээрээ 4 хоног рашаан'].map(x => `<button class="chip" onclick="helperAsk(this.textContent)">${x}</button>`).join('')}</div>`;
   }
@@ -288,7 +310,7 @@ function helperAnswer(text) {
   if (!res.length) return `${head}<br>Энэ нөхцөлд багтах маршрут олдсонгүй 😕 Хоногоо нэмэх эсвэл төсвөө өөрчлөөд дахин бичээрэй.`;
   const tip = p.season === 'winter' ? '<p class="note">❄️ Өвөл хүйтэн, зам мөстэй. Хоёр машинаар явж, дулаан хувцас авч яваарай.</p>'
     : p.car === 'sedan' ? '<p class="note">🚗 Суудлын машинд тохирох газруудыг л сонгосон. Шороон зам руу орох газрууд хасагдсан.</p>' : '';
-  return `${head} Танд ${res.length} санал байна:<div class="sg-list">${res.map((t, i) => suggestionCard(t, p, i)).join('')}</div>${tip}`;
+  return `${head} Танд ${res.length} санал байна:<div class="sg-list">${res.map((t, i) => suggestionCard(t, p, i)).join('')}</div>${tip}${tipsFor(p)}`;
 }
 function renderHelper() {
   const el = $('#view'); if (!el) return;
@@ -297,7 +319,7 @@ function renderHelper() {
     <p class="note" style="margin-top:-6px">Ямар аялал хүсэж байгаагаа энгийнээр бичээрэй. Жишээ нь: «Гэр бүлээрээ 4 хоног, суудлын машинтай нуур үзмээр байна».</p>
     <div class="hp-log" id="hpLog">${HELPER.msgs.length ? HELPER.msgs.map(m => `<div class="hp-msg ${m.r}">${m.h}</div>`).join('') :
       `<div class="hp-msg bot">Сайн байна уу! 👋 Би 21 аймгийн мэдээлэл дээр тулгуурлан танд маршрут санал болгоно. Юу сонирхож байна?
-       <div class="hp-sugg">${['3 хоног нуур үзмээр байна', 'Говь руу 5 хоног жийптэй', 'Өвөл хаашаа явах вэ?', 'Гэр бүлээрээ 4 хоног рашаан', 'Түүхэн газрууд 2 хоног'].map(x => `<button class="chip" onclick="helperAsk(this.textContent)">${x}</button>`).join('')}</div></div>`}</div>
+       <div class="hp-sugg">${['3 хоног нуур үзмээр байна', 'Ганцаараа чилл 3 хоног', 'Говь руу 5 хоног жийптэй', 'Өвөл хаашаа явах вэ?', 'Гэр бүлээрээ 4 хоног рашаан'].map(x => `<button class="chip" onclick="helperAsk(this.textContent)">${x}</button>`).join('')}</div></div>`}</div>
     <form class="hp-form" onsubmit="event.preventDefault();helperAsk($('#hpIn').value)">
       <input class="field" id="hpIn" maxlength="300" placeholder="Жишээ: 5 хоног, говь, тэмээ унамаар байна" autocomplete="off">
       <button class="btn" type="submit">Илгээх</button></form>

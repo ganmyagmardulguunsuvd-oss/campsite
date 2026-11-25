@@ -159,14 +159,95 @@ VIEWS.photos = async (aid) => {
   </section>`;
 };
 
+
+// ---------- Үзэсгэлэнт газар бүрийн зураг (дарааллаар, «Энэ бол …») ----------
+// [Commons хайлт, гарчигт заавал байх үг (/ -ээр хувилбар)]; null = чөлөөт зураг олдоогүй → аялагчдын зураг хүлээнэ
+const PLACE_Q = {
+  tov: [['Gorkhi-Terelj National Park', 'terel'], ['Genghis Khan Equestrian Statue', 'genghis'], ['Khustain Nuruu National Park', 'khustai'], ['Manzushir monastery', 'manzushir']],
+  selenge: [['Amarbayasgalant Monastery', 'amarbayasgalant'], ['Selenge River Mongolia', 'selen'], ['Altanbulag Mongolia', 'altanbulag']],
+  darkhan: [['Darkhan Mongolia', 'darkhan'], ['Kharaa River Mongolia', 'kharaa']],
+  orkhon: [['Erdenet mine', 'erdenet'], ['Erdenet monument', 'erdenet']],
+  bulgan: [['Khögnö Khan', 'khogno'], ['Elsen Tasarkhai', 'elsen'], ['Uran Togoo', 'uran'], null],
+  uvurkhangai: [['Erdene Zuu Monastery', 'erdene zuu'], ['Orkhon waterfall', 'tsutgalan'], ['Tövkhön Monastery', 'tovkhon'], ['Khujirt', 'khujirt/хужирт']],
+  arkhangai: [['Terkhiin Tsagaan Lake', 'terkhiin'], ['Taikhar Chuluu', 'taikhar'], ['Tsenkher hot spring', 'tsenkh'], ['Chuluut river', 'chuluut'], ['Ögii Lake', 'ogii/ugii/өгий'], ['Zaya Gegeen', 'zaya']],
+  khuvsgul: [['Lake Khövsgöl', 'khovsgol/hovsgol'], ['Uushigiin Uver deer stones', 'uushig'], ['Dukha reindeer Mongolia', 'tsaatan/dukha/reindeer/rendier']],
+  zavkhan: [['Otgontenger', 'otgon'], ['Telmen Lake', 'telmen'], ['Khar Nuur Zavkhan', 'khar-nuur/har nuur'], ['Uliastai', 'uliastai']],
+  govialtai: [['Eej Khairkhan', 'eej khairkhan'], ['Sutai mountain Mongolia', 'sutai'], ['Khasagt Khairkhan', 'khasagt'], ['Taishir reservoir', 'taishir']],
+  uvs: [['Uvs Lake', 'uvs'], ['Khyargas Lake', 'khyargas/khyaras'], ['Achit Lake', 'achit'], ['Kharkhiraa', 'kharkhiraa/хархираа'], ['Altan Els Mongolia', 'altan els']],
+  khovd: [['Khar-Us Lake', 'khar-us'], ['Khar Lake Mongolia', 'khar-nuur'], ['Tsenkher cave', 'tsenkher'], ['Tsambagarav', 'tsambagarav'], ['Sangiin Kherem', 'sangiin']],
+  bayanulgii: [['Tavan Bogd', 'tavan bogd'], ['Khoton Nuur', 'khoton/khurgan/horgan'], ['Tolbo Lake', 'tolbo-nuur/tolbo nuur'], ['Kazakh eagle hunter', 'eagle']],
+  bayankhongor: [['Orog Nuur', 'orog'], ['Böön Tsagaan Lake', 'buuntsagaan/boon tsagaan'], ['Shargaljuut', 'shargaljuut'], ['Tsagaan Agui', 'tsagaan agui']],
+  umnugovi: [['Yolyn Am', 'yolyn'], ['Khongoryn Els', 'khongor'], ['Bayanzag', 'bayanzag'], ['Khermen Tsav', 'khermen']],
+  dundgovi: [['Tsagaan Suvarga', 'suvarga/suvraga'], ['Baga Gazaryn Chuluu', 'baga gaz'], ['Ikh Gazryn Chuluu', 'ikh gaz'], ['Ulaan Suvarga', 'ulaan suv']],
+  dornogovi: [['Khamar Monastery', 'khamar'], ['Danzanravjaa', 'danzan'], ['Zamyn-Üüd', 'zamyn']],
+  govisumber: [['Choir Mongolia', 'choir mongolia'], null],
+  khentii: [['Khökh Lake Khentii', 'khukh nuur/хөх нуур/khokh nuur'], ['Burkhan Khaldun', 'burkhan'], ['Dadal Khentii', 'dadal'], ['Chinggis city Mongolia', 'khentii']],
+  sukhbaatar: [['Shiliin Bogd', 'shiliin'], ['Dariganga', 'dariganga'], null],
+  dornod: [['Buir Lake', 'buir'], ['Khalkhin Gol monument', 'khalkhin gol mon'], ['Menengiin Tal', 'menen'], ['Kherlen Bars', 'bars hot']]
+};
+const normT = t => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+const PLC = {};
+function placePhotos(aid) {
+  if (PLC[aid]) return PLC[aid];
+  try { const c = JSON.parse(localStorage.getItem('cs_pl1_' + aid) || 'null'); if (c && Date.now() - c.t < 7 * 864e5) return PLC[aid] = Promise.resolve(c.p) } catch (e) { }
+  return PLC[aid] = Promise.all((PLACE_Q[aid] || []).map(async q => {
+    if (!q) return null;
+    try {
+      const keys = q[1].split('/').map(normT);
+      const r = await cmSearch(q[0]);
+      return r.find(x => keys.some(k => normT(x.title).includes(k))) || null;
+    } catch (e) { return null }
+  })).then(list => { try { localStorage.setItem('cs_pl1_' + aid, JSON.stringify({ t: Date.now(), p: list })) } catch (e) { } return list });
+}
+const PL_ICON = { lake: '🌊', forest: '🌲', desert: '🏜️', snow: '🏔️', history: '🏛️', hotspring: '♨️', nomad: '🦅', steppe: '🐎' };
+function placeIcon(x) { const t = x[0] + ' ' + x[1]; for (const c of Object.keys(CATS)) if (CATS[c].re.test(t)) return PL_ICON[c] || '📍'; return '📍' }
+function placeStripHtml(a) {
+  return `<div class="pl-head"><h4>📸 ${a.n} — үзэх газрууд <small>(${a.p.length})</small></h4>
+    <div class="pl-nav"><button type="button" onclick="plScroll(this,-1)" aria-label="Өмнөх">‹</button><button type="button" onclick="plScroll(this,1)" aria-label="Дараах">›</button></div></div>
+    <div class="pl-strip" data-a="${a.id}">${a.p.map((x, i) => `<div class="pl-card" data-i="${i}">
+      <button type="button" class="pl-img" onclick="openPlace('${a.id}',${i})"><span class="pl-ph">${placeIcon(x)}</span><span class="pl-no">${i + 1}</span></button>
+      <div class="pl-b"><b>${esc(x[0])}</b><small>${esc(String(x[1]).split(/(?<=\.)\s/)[0])}</small><span class="pl-cr"></span></div></div>`).join('')}</div>`;
+}
+function plScroll(btn, d) { const s = btn.closest('.pl-head').nextElementSibling; s.scrollBy({ left: d * Math.min(s.clientWidth * .85, 520), behavior: 'smooth' }) }
+const PLD = {};
+async function fillPlaceStrips() {
+  for (const el of document.querySelectorAll('.pl-strip[data-a]:not([data-done])')) {
+    el.dataset.done = 1;
+    const aid = el.dataset.a, a = A.find(x => x.id === aid);
+    const [cm, up] = await Promise.all([placePhotos(aid), userPhotos(aid)]);
+    PLD[aid] = a.p.map((x, i) => {
+      const u = up.find(p => p.place === x[0]);
+      return u ? { src: u.url, full: u.url, user: '@' + (u.author || '') } : cm[i] ? { src: cm[i].src, full: cm[i].full, by: cm[i].by, lic: cm[i].lic, page: cm[i].page } : null;
+    });
+    if (!el.isConnected) continue;
+    el.querySelectorAll('.pl-card').forEach(card => {
+      const i = +card.dataset.i, ph = PLD[aid][i], img = card.querySelector('.pl-img'), cr = card.querySelector('.pl-cr');
+      if (ph) { img.style.backgroundImage = `url('${safeUrl(ph.src)}')`; img.classList.add('has'); cr.textContent = ph.user ? '📷 ' + ph.user : '© ' + ph.by }
+      else cr.innerHTML = `<a href="#" onclick="openPhotoForm('${aid}');return false">📷 Зураг оруулах</a>`;
+    });
+  }
+}
+function openPlace(aid, i) {
+  const a = A.find(x => x.id === aid), x = a.p[i], ph = (PLD[aid] || [])[i];
+  openModal(`<div class="lb">${ph ? `<img src="${safeUrl(ph.full || ph.src)}" alt="">` : `<div class="pl-empty">${placeIcon(x)}</div>`}
+    <div class="lb-m"><small class="pl-this">Энэ бол</small><h3 style="margin:2px 0 4px">${i + 1}. ${esc(x[0])}</h3>
+      <p>${esc(x[1])}</p><div class="tags">${x[2] ? `<span class="tag">📍 ${esc(x[2])}</span>` : ''}${x[3] === 'car' ? '<span class="tag car">🚗 Суудлын машин OK</span>' : '<span class="tag x4">🚙 Жийп хэрэгтэй</span>'}${x[4] ? `<span class="tag">🗓️ ${esc(x[4])}</span>` : ''}</div>
+      <small>${ph ? (ph.user ? `📷 ${esc(ph.user)}` : `Зураг: <a href="${safeUrl(ph.page)}" target="_blank" rel="noopener">${esc(ph.by)}</a> · ${esc(ph.lic)} · Wikimedia Commons`) : 'Энэ газрын зураг одоогоор алга. Очиж байсан бол зургаа оруулаарай!'}</small></div>
+    <div class="road-act" style="justify-content:space-between">${i > 0 ? `<button class="copy" onclick="openPlace('${aid}',${i - 1})">‹ ${esc(a.p[i - 1][0])}</button>` : '<span></span>'}
+      <a class="copy" href="${gm(x[0] + ' ' + a.n + ' Mongolia')}" target="_blank" rel="noopener">🗺️ Газрын зураг</a>
+      ${i < a.p.length - 1 ? `<button class="copy" onclick="openPlace('${aid}',${i + 1})">${esc(a.p[i + 1][0])} ›</button>` : '<span></span>'}</div></div>`);
+  $('#modal .modal-box').classList.add('wide');
+}
+
 // ---------- Төлөвлөгчтэй холбох ----------
 TABS.splice(1, 0, ['photos', '📷 Зураг']);
 const _tabBody3 = tabBody;
 tabBody = function (a, t) {
   if (t === 'photos') return `<div class="ph-wrap" data-a="${a.id}"><p class="note">Зураг ачаалж байна…</p></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button class="btn ghost" onclick="openPhotoForm('${a.id}')">➕ Өөрийн зургаа оруулах</button><a class="btn ghost" href="#photos/${a.id}">Бүх зураг →</a></div>`;
+  if (t === 'places') return `<div class="pl-wrap">${placeStripHtml(a)}</div>` + _tabBody3(a, t);
   return _tabBody3(a, t);
 };
 const _afterRender3 = afterRender;
-afterRender = function () { _afterRender3(); fillPhotoTabs() };
+afterRender = function () { _afterRender3(); fillPhotoTabs(); fillPlaceStrips() };
 if (location.hash.startsWith('#photos')) router();
